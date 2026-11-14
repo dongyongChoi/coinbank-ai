@@ -65,8 +65,8 @@ flowchart LR
 ## 현재 마일스톤: M1 Kotlin 수직 슬라이스
 - [x] 1. Kotlin + Spring Boot 프로젝트 생성하고 빌드 확인
 - [x] 2. Docker Compose(MySQL·Redis) 올리고 앱을 DB에 연결
-- [ ] 3. Modulith 모듈 뼈대와 경계 검증 테스트  ← 지금
-- [ ] 4. Account 엔티티와 계좌 개설·조회 API
+- [x] 3. Modulith 모듈 뼈대와 경계 검증 테스트
+- [ ] 4. Account 엔티티와 계좌 개설·조회 API  ← 지금
 - [ ] 5. 송금 API (단순 버전)
 - [ ] 6. Testcontainers 송금 통합 테스트
 - [ ] 7. GitHub Actions CI
