@@ -1,0 +1,109 @@
+# 코인뱅크 API 시연 (IntelliJ HTTP Client)
+# 준비: docker compose up -d 후 ./gradlew bootRun
+# 위에서부터 순서대로 실행한다. 1, 2번이 계좌번호를 변수에 저장한다.
+
+@host = http://localhost:8080
+
+### 1. 계좌 개설: 보내는 사람 (잔액 10,000원)
+POST {{host}}/accounts
+Content-Type: application/json
+
+{
+  "ownerName": "김코인",
+  "initialBalance": 10000
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201));
+    client.global.set("fromAccount", response.body.accountNumber);
+%}
+
+### 2. 계좌 개설: 받는 사람 (잔액 0원)
+POST {{host}}/accounts
+Content-Type: application/json
+
+{
+  "ownerName": "이뱅크"
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201));
+    client.global.set("toAccount", response.body.accountNumber);
+%}
+
+### 3. 송금: 3,000원
+POST {{host}}/transfers
+Content-Type: application/json
+
+{
+  "fromAccountNumber": "{{fromAccount}}",
+  "toAccountNumber": "{{toAccount}}",
+  "amount": 3000
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201));
+%}
+
+### 4. 보내는 사람 잔액 조회 (기대: 7,000원)
+GET {{host}}/accounts/{{fromAccount}}
+
+> {%
+    client.test("잔액 7000", () => client.assert(response.body.balance === 7000));
+%}
+
+### 5. 받는 사람 잔액 조회 (기대: 3,000원)
+GET {{host}}/accounts/{{toAccount}}
+
+> {%
+    client.test("잔액 3000", () => client.assert(response.body.balance === 3000));
+%}
+
+### 6. 실패: 잔액 부족 (기대: 422)
+POST {{host}}/transfers
+Content-Type: application/json
+
+{
+  "fromAccountNumber": "{{fromAccount}}",
+  "toAccountNumber": "{{toAccount}}",
+  "amount": 999999
+}
+
+> {%
+    client.test("422 Unprocessable Content", () => client.assert(response.status === 422));
+%}
+
+### 7. 실패: 받는 계좌 없음 (기대: 404, 출금은 롤백)
+POST {{host}}/transfers
+Content-Type: application/json
+
+{
+  "fromAccountNumber": "{{fromAccount}}",
+  "toAccountNumber": "000000000000",
+  "amount": 1000
+}
+
+> {%
+    client.test("404 Not Found", () => client.assert(response.status === 404));
+%}
+
+### 8. 실패: 같은 계좌로 송금 (기대: 400)
+POST {{host}}/transfers
+Content-Type: application/json
+
+{
+  "fromAccountNumber": "{{fromAccount}}",
+  "toAccountNumber": "{{fromAccount}}",
+  "amount": 100
+}
+
+> {%
+    client.test("400 Bad Request", () => client.assert(response.status === 400));
+%}
+
+### 9. 실패 뒤에도 보내는 사람 잔액은 그대로 (기대: 7,000원)
+GET {{host}}/accounts/{{fromAccount}}
+
+> {%
+    client.test("잔액 7000", () => client.assert(response.body.balance === 7000));
+%}
