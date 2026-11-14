@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# 같은 브랜치에 새 커밋이 오면 이전 실행을 취소한다
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Gradle 의존성과 빌드 결과를 캐시한다
+      - uses: gradle/actions/setup-gradle@v6
+
+      # 컴파일, Modulith 경계 검증, Testcontainers 통합 테스트를 모두 돌린다.
+      # ubuntu-latest에는 Docker가 있어서 MySQL 컨테이너가 그대로 뜬다.
+      - name: Build and test
+        run: ./gradlew build
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-report
+          path: build/reports/tests/test
+          retention-days: 7
