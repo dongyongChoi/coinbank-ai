@@ -21,6 +21,20 @@ class AccountService(
     fun find(accountNumber: String): AccountInfo? =
         accountRepository.findByAccountNumber(accountNumber)?.toInfo()
 
+    @Transactional
+    fun withdraw(accountNumber: String, amount: Long) {
+        getAccount(accountNumber).withdraw(amount)
+    }
+
+    @Transactional
+    fun deposit(accountNumber: String, amount: Long) {
+        getAccount(accountNumber).deposit(amount)
+    }
+
+    private fun getAccount(accountNumber: String): Account =
+        accountRepository.findByAccountNumber(accountNumber)
+            ?: throw NoSuchElementException("계좌를 찾을 수 없습니다: $accountNumber")
+
     /** "3333" + 무작위 8자리. 이미 있는 번호면 다시 뽑는다. */
     private fun newAccountNumber(): String =
         generateSequence { "3333%08d".format(Random.nextInt(100_000_000)) }

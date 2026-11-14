@@ -67,7 +67,7 @@ flowchart LR
 - [x] 2. Docker Compose(MySQL·Redis) 올리고 앱을 DB에 연결
 - [x] 3. Modulith 모듈 뼈대와 경계 검증 테스트
 - [x] 4. Account 엔티티와 계좌 개설·조회 API
-- [ ] 5. 송금 API (단순 버전)  ← 지금
-- [ ] 6. Testcontainers 송금 통합 테스트
+- [x] 5. 송금 API (단순 버전)
+- [ ] 6. Testcontainers 송금 통합 테스트  ← 지금
 - [ ] 7. GitHub Actions CI
 - [ ] 8. ADR 2개와 .http 시연 파일

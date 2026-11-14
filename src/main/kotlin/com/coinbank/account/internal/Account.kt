@@ -1,5 +1,6 @@
 package com.coinbank.account.internal
 
+import com.coinbank.account.InsufficientBalanceException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -34,5 +35,16 @@ class Account(
     init {
         require(ownerName.isNotBlank()) { "예금주 이름은 비어 있을 수 없습니다." }
         require(initialBalance >= 0) { "초기 잔액은 0 이상이어야 합니다." }
+    }
+
+    fun withdraw(amount: Long) {
+        require(amount > 0) { "금액은 0보다 커야 합니다." }
+        if (balance < amount) throw InsufficientBalanceException(accountNumber, balance, amount)
+        balance -= amount
+    }
+
+    fun deposit(amount: Long) {
+        require(amount > 0) { "금액은 0보다 커야 합니다." }
+        balance += amount
     }
 }
