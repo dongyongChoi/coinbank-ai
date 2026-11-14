@@ -1,18 +1,14 @@
 package com.coinbank.account
 
+import com.coinbank.IntegrationTest
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
-import org.springframework.transaction.annotation.Transactional
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional // 테스트가 끝나면 롤백해서 개발 DB에 데이터를 남기지 않는다
+@IntegrationTest
 class AccountApiTests(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val accountService: AccountService,
