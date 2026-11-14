@@ -63,8 +63,8 @@ flowchart LR
 - [ ] M6 금융 AI + 마무리 (6주차, Could): 읽기 전용 AI 상담, README·회고
 
 ## 현재 마일스톤: M1 Kotlin 수직 슬라이스
-- [ ] 1. Kotlin + Spring Boot 프로젝트 생성하고 빌드 확인  ← 지금
-- [ ] 2. Docker Compose(MySQL·Redis) 올리고 앱을 DB에 연결
+- [x] 1. Kotlin + Spring Boot 프로젝트 생성하고 빌드 확인
+- [ ] 2. Docker Compose(MySQL·Redis) 올리고 앱을 DB에 연결  ← 지금
 - [ ] 3. Modulith 모듈 뼈대와 경계 검증 테스트
 - [ ] 4. Account 엔티티와 계좌 개설·조회 API
 - [ ] 5. 송금 API (단순 버전)
