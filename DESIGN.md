@@ -10,22 +10,26 @@
 ```
 coinbank-ai/
 ├── build.gradle.kts, settings.gradle.kts    M1
-├── docker-compose.yml                       M1 MySQL·Redis → M2 otel-lgtm → M3 Kafka
+├── docker-compose.yml, .env.example         M1 MySQL·Redis → M2 otel-lgtm → M3 Kafka
 ├── .github/workflows/ci.yml                 M1
-├── http/                                    M1 API 시연용 .http 파일
-├── docs/adr/, docs/ai-log.md                M1부터 계속
+├── http/coinbank.http                       M1 API 시연
+├── docs/adr/                                M1부터 계속 (001 원장 모델, 002 모듈 경계)
+├── docs/ai-log.md                           M2부터 (아직 없음)
 ├── k6/                                      M2 부하 테스트 시나리오
 ├── src/main/kotlin/com/coinbank/
 │   ├── CoinbankApplication.kt               M1
+│   ├── ApiExceptionHandler.kt               M1 도메인 예외 → HTTP 응답
 │   ├── account/                             M1 계좌 → M2 원장
 │   ├── transfer/                            M1 송금 → M2 락·멱등 키
-│   ├── product/                             M3 특판 적금
-│   ├── notification/                        M3 알림 컨슈머 → M5 삭제
-│   ├── home/                                M4 홈 집계
+│   ├── product/                             M1 뼈대 → M3 특판 적금
+│   ├── notification/                        M1 뼈대 → M3 알림 컨슈머 → M5 삭제
+│   ├── home/                                M1 뼈대 → M4 홈 집계
 │   └── advisor/                             M6 AI 소비 상담
-├── src/test/kotlin/com/coinbank/            M1부터 (Testcontainers, Modulith 검증)
+├── src/test/kotlin/com/coinbank/            M1부터 (@IntegrationTest, Testcontainers, ModularityTests)
 └── notification-service/                    M5 분리된 알림 서비스
 ```
+
+모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
 
 ```mermaid
 flowchart LR
@@ -55,14 +59,14 @@ flowchart LR
 - JUnit 5, MockK, Testcontainers, k6: 정합성은 실제 MySQL·Redis·Kafka로 증명한다.
 
 ## 마일스톤
-- [ ] M1 Kotlin 수직 슬라이스 (1주차): 송금 1건이 API → DB → 테스트 → CI를 통과한다
+- [x] M1 Kotlin 수직 슬라이스 (1주차): 송금 1건이 API → DB → 테스트 → CI를 통과한다
 - [ ] M2 동시성·정합성 (2주차): 동시 송금 1만 건에서 불일치·중복 0건, 락 3안 비교표
 - [ ] M3 특판 적금 + Kafka Outbox (3주차): 초과 개설 0건, 이벤트 유실 0건
 - [ ] M4 비동기 홈 집계 (4주차): 순차·Virtual Thread·Coroutine p95 비교표
 - [ ] M5 알림 모듈 점진 이관 (5주차): 알림을 별도 서비스로 분리하고 모놀리스 코드 삭제
 - [ ] M6 금융 AI + 마무리 (6주차, Could): 읽기 전용 AI 상담, README·회고
 
-## 현재 마일스톤: M1 Kotlin 수직 슬라이스
+## 현재 마일스톤: M1 Kotlin 수직 슬라이스 (완료, 2026-11-15)
 - [x] 1. Kotlin + Spring Boot 프로젝트 생성하고 빌드 확인
 - [x] 2. Docker Compose(MySQL·Redis) 올리고 앱을 DB에 연결
 - [x] 3. Modulith 모듈 뼈대와 경계 검증 테스트
