@@ -70,4 +70,4 @@ flowchart LR
 - [x] 5. 송금 API (단순 버전)
 - [x] 6. Testcontainers 송금 통합 테스트
 - [x] 7. GitHub Actions CI
-- [ ] 8. ADR 2개와 .http 시연 파일  ← 지금
+- [x] 8. ADR 2개와 .http 시연 파일
