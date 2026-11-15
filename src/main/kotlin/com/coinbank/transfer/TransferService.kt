@@ -17,8 +17,8 @@ class TransferService(
     fun transfer(fromAccountNumber: String, toAccountNumber: String, amount: Long): TransferInfo {
         val transfer = Transfer(fromAccountNumber, toAccountNumber, amount)
 
-        accountService.withdraw(fromAccountNumber, amount)
-        accountService.deposit(toAccountNumber, amount)
+        accountService.withdraw(fromAccountNumber, amount, transfer.transactionId)
+        accountService.deposit(toAccountNumber, amount, transfer.transactionId)
 
         return transferRepository.save(transfer).toInfo()
     }

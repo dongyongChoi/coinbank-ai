@@ -29,7 +29,7 @@ coinbank-ai/
 └── notification-service/                    M5 분리된 알림 서비스
 ```
 
-모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
+모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`, `LedgerAudit`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
 
 ```mermaid
 flowchart LR
@@ -68,8 +68,8 @@ flowchart LR
 
 ## 현재 마일스톤: M2 동시성·정합성
 - [x] 1. 동시 송금 테스트로 갱신 유실 재현
-- [ ] 2. 복식 부기 원장과 "원장 합산 = 잔액" 검사  ← 지금
-- [ ] 3. 비관 락 + 계좌 ID 정렬로 데드락 방지
+- [x] 2. 복식 부기 원장과 "원장 합산 = 잔액" 검사
+- [ ] 3. 비관 락 + 계좌 ID 정렬로 데드락 방지  ← 지금
 - [ ] 4. 낙관 락(@Version)과 재시도
 - [ ] 5. Redis 분산 락(Redisson)과 락 전략 교체 설정
 - [ ] 6. Idempotency-Key 헤더 + 유니크 제약

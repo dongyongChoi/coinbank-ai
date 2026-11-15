@@ -36,6 +36,8 @@ class TransferApiTests(
         assertEquals(7_000, balanceInDb(from))
         assertEquals(3_000, balanceInDb(to))
         assertEquals(1, transferCountInDb(from))
+        assertEquals(7_000, ledgerSumInDb(from))
+        assertEquals(3_000, ledgerSumInDb(to))
     }
 
     @Test
@@ -62,6 +64,7 @@ class TransferApiTests(
 
         assertEquals(1_000, balanceInDb(from))
         assertEquals(0, transferCountInDb(from))
+        assertEquals(1_000, ledgerSumInDb(from))
     }
 
     @Test
@@ -92,6 +95,13 @@ class TransferApiTests(
     private fun balanceInDb(accountNumber: String): Long? =
         jdbcTemplate.queryForObject(
             "SELECT balance FROM account WHERE account_number = ?",
+            Long::class.java,
+            accountNumber,
+        )
+
+    private fun ledgerSumInDb(accountNumber: String): Long? =
+        jdbcTemplate.queryForObject(
+            "SELECT COALESCE(SUM(amount), 0) FROM ledger_entry WHERE account_number = ?",
             Long::class.java,
             accountNumber,
         )

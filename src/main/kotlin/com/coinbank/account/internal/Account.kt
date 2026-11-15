@@ -24,7 +24,7 @@ class Account(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null
 
-    /** 원 단위 잔액. M2에서 원장 합산으로 바꾼다. */
+    /** 원 단위 잔액. 빠른 조회용이고, 근거는 원장(LedgerEntry)에 있다. 둘은 항상 같아야 한다. */
     @Column(nullable = false)
     var balance: Long = initialBalance
         protected set

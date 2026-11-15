@@ -2,6 +2,7 @@ package com.coinbank.transfer
 
 import com.coinbank.IntegrationTest
 import com.coinbank.account.AccountService
+import com.coinbank.account.LedgerAudit
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,6 +21,7 @@ import kotlin.test.assertEquals
 class ConcurrentTransferTests(
     @Autowired private val transferService: TransferService,
     @Autowired private val accountService: AccountService,
+    @Autowired private val ledgerAudit: LedgerAudit,
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) {
 
@@ -35,6 +37,11 @@ class ConcurrentTransferTests(
 
         assertEquals(100, succeeded, "성공한 송금 수")
         assertEquals(100, transferCountInDb(from), "송금 기록 수")
+        assertEquals(
+            emptyList(),
+            ledgerAudit.check().mismatchedAccounts.filter { it == from || it == to },
+            "원장과 잔액이 어긋난 계좌",
+        )
         assertEquals(0, balanceInDb(from), "보낸 계좌 잔액 (100,000 - 1,000 x 100)")
         assertEquals(100_000, balanceInDb(to), "받은 계좌 잔액 (0 + 1,000 x 100)")
     }

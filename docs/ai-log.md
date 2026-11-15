@@ -6,3 +6,8 @@
 - AI 사용: Claude Code가 테스트(`ConcurrentTransferTests`)를 작성하고 실행했다.
 - 소요 시간:
 - AI가 놓친 버그:
+
+## M2-2 복식 부기 원장과 "원장 합산 = 잔액" 검사 (2026-11-15)
+- AI 사용: Claude Code가 `LedgerEntry`, `LedgerEntryRepository`, `LedgerAudit`, 테스트(`LedgerTests`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그: 첫 컴파일에서 `JdbcTemplate.queryForList`가 `List<Long?>`를 돌려주는 것을 놓쳐 타입 오류가 났다. `filterNotNull()`로 고쳤다.

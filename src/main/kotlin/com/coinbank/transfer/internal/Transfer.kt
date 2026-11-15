@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
+import java.util.UUID
 
 /** 송금 기록. 한 번 쓰면 고치지 않으므로 모든 필드가 val이다. */
 @Entity
@@ -24,6 +25,10 @@ class Transfer(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null
+
+    /** 이 송금이 원장에 남긴 줄들을 묶는 거래 ID. */
+    @Column(nullable = false, updatable = false, length = 36)
+    val transactionId: String = UUID.randomUUID().toString()
 
     @Column(nullable = false, updatable = false)
     val createdAt: Instant = Instant.now()
