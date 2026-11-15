@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 @Entity
@@ -27,6 +28,15 @@ class Account(
     /** 원 단위 잔액. 빠른 조회용이고, 근거는 원장(LedgerEntry)에 있다. 둘은 항상 같아야 한다. */
     @Column(nullable = false)
     var balance: Long = initialBalance
+        protected set
+
+    /**
+     * 낙관 락용 버전. 행을 고칠 때마다 1씩 오른다. 저장할 때 "내가 읽은 version 그대로인가"를
+     * UPDATE의 WHERE 조건으로 확인하고, 그사이 누가 먼저 고쳤으면 저장이 실패한다.
+     */
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0
         protected set
 
     @Column(nullable = false, updatable = false)

@@ -4,6 +4,8 @@ import com.coinbank.account.internal.Account
 import com.coinbank.account.internal.AccountRepository
 import com.coinbank.account.internal.LedgerEntry
 import com.coinbank.account.internal.LedgerEntryRepository
+import com.coinbank.account.internal.LockStrategy
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -14,6 +16,7 @@ import kotlin.random.Random
 class AccountService(
     private val accountRepository: AccountRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
+    @Value("\${coinbank.lock-strategy}") private val lockStrategy: LockStrategy,
 ) {
 
     @Transactional
@@ -39,13 +42,14 @@ class AccountService(
     fun moveMoney(fromAccountNumber: String, toAccountNumber: String, amount: Long, transactionId: String) {
         require(fromAccountNumber != toAccountNumber) { "같은 계좌로는 옮길 수 없습니다." }
 
-        // 방향과 상관없이 항상 계좌 번호가 작은 쪽부터 잠근다. 순서가 같으면 서로를 기다리는 데드락이 생기지 않는다.
-        val locked = listOf(fromAccountNumber, toAccountNumber)
+        // 방향과 상관없이 항상 계좌 번호가 작은 쪽부터 읽는다. 순서가 같으면 서로를 기다리는 데드락이 생기지 않는다.
+        // 낙관 락에서도 UPDATE가 읽은 순서대로 나가므로 같은 규칙이 필요하다.
+        val accounts = listOf(fromAccountNumber, toAccountNumber)
             .sorted()
-            .associateWith { getAccountWithLock(it) }
+            .associateWith { getAccountForUpdate(it) }
 
-        locked.getValue(fromAccountNumber).withdraw(amount)
-        locked.getValue(toAccountNumber).deposit(amount)
+        accounts.getValue(fromAccountNumber).withdraw(amount)
+        accounts.getValue(toAccountNumber).deposit(amount)
         record(transactionId, fromAccountNumber, -amount)
         record(transactionId, toAccountNumber, amount)
     }
@@ -54,9 +58,11 @@ class AccountService(
         ledgerEntryRepository.save(LedgerEntry(transactionId, accountNumber, amount))
     }
 
-    private fun getAccountWithLock(accountNumber: String): Account =
-        accountRepository.findWithLockByAccountNumber(accountNumber)
-            ?: throw NoSuchElementException("계좌를 찾을 수 없습니다: $accountNumber")
+    private fun getAccountForUpdate(accountNumber: String): Account =
+        when (lockStrategy) {
+            LockStrategy.PESSIMISTIC -> accountRepository.findWithLockByAccountNumber(accountNumber)
+            LockStrategy.OPTIMISTIC -> accountRepository.findByAccountNumber(accountNumber)
+        } ?: throw NoSuchElementException("계좌를 찾을 수 없습니다: $accountNumber")
 
     /** "3333" + 무작위 8자리. 이미 있는 번호면 다시 뽑는다. */
     private fun newAccountNumber(): String =

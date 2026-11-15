@@ -16,3 +16,8 @@
 - AI 사용: Claude Code가 `AccountService.moveMoney`, `findWithLockByAccountNumber`, 양방향 동시 송금 테스트를 작성하고 실행했다.
 - 소요 시간:
 - AI가 놓친 버그:
+
+## M2-4 낙관 락(@Version), 재시도, 락 전략 설정 (2026-11-15)
+- AI 사용: Claude Code가 `Account.version`, `LockStrategy`, `TransferService`의 재시도, 전략별 동시 송금 테스트를 작성하고 실행했다. 재시도 횟수도 Claude Code가 측정했다.
+- 소요 시간:
+- AI가 놓친 버그:

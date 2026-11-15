@@ -6,23 +6,33 @@ import com.coinbank.account.LedgerAudit
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.test.context.TestPropertySource
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.test.assertEquals
 
+/** 비관 락. application.yml의 기본값이라 따로 설정하지 않는다. */
+class PessimisticLockTransferTests : ConcurrentTransferTests()
+
+/** 낙관 락. 설정이 달라서 스프링 컨텍스트와 MySQL 컨테이너가 따로 뜬다. */
+@TestPropertySource(properties = ["coinbank.lock-strategy=optimistic"])
+class OptimisticLockTransferTests : ConcurrentTransferTests()
+
 /**
  * 여러 스레드가 같은 계좌에서 동시에 송금해도 돈이 틀리지 않는지 확인한다.
  * HTTP를 거치지 않고 TransferService를 직접 부른다. 보려는 것이 트랜잭션끼리의 충돌이기 때문이다.
+ * 같은 시나리오를 락 전략마다 돌리려고 abstract로 두고, 위의 하위 클래스가 전략을 고른다.
  */
 @IntegrationTest
-class ConcurrentTransferTests(
-    @Autowired private val transferService: TransferService,
-    @Autowired private val accountService: AccountService,
-    @Autowired private val ledgerAudit: LedgerAudit,
-    @Autowired private val jdbcTemplate: JdbcTemplate,
-) {
+abstract class ConcurrentTransferTests {
+
+    // 하위 클래스가 생성자 인자를 일일이 넘기지 않도록 필드로 주입받는다.
+    @Autowired private lateinit var transferService: TransferService
+    @Autowired private lateinit var accountService: AccountService
+    @Autowired private lateinit var ledgerAudit: LedgerAudit
+    @Autowired private lateinit var jdbcTemplate: JdbcTemplate
 
     @Test
     fun `같은 계좌에서 동시에 100번 송금해도 잔액이 송금 기록과 맞는다`() {
