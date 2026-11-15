@@ -3,14 +3,13 @@ package com.coinbank.transfer
 import com.coinbank.IntegrationTest
 import com.coinbank.account.AccountService
 import com.coinbank.account.LedgerAudit
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.test.assertEquals
 
 /**
@@ -25,40 +24,51 @@ class ConcurrentTransferTests(
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) {
 
-    @Disabled("갱신 유실로 실패한다 (보낸 계좌 잔액: 기대 0, 실제 90,000). M2-3에서 락을 넣고 켠다.")
     @Test
     fun `같은 계좌에서 동시에 100번 송금해도 잔액이 송금 기록과 맞는다`() {
         val from = accountService.open("김코인", 100_000).accountNumber
         val to = accountService.open("이뱅크", 0).accountNumber
 
-        val succeeded = runConcurrently(times = 100) {
+        val failures = runConcurrently(times = 100) {
             transferService.transfer(from, to, 1_000)
         }
 
-        assertEquals(100, succeeded, "성공한 송금 수")
+        assertEquals(emptyList(), failures, "실패한 송금")
         assertEquals(100, transferCountInDb(from), "송금 기록 수")
-        assertEquals(
-            emptyList(),
-            ledgerAudit.check().mismatchedAccounts.filter { it == from || it == to },
-            "원장과 잔액이 어긋난 계좌",
-        )
+        assertEquals(emptyList(), mismatchedAmong(from, to), "원장과 잔액이 어긋난 계좌")
         assertEquals(0, balanceInDb(from), "보낸 계좌 잔액 (100,000 - 1,000 x 100)")
         assertEquals(100_000, balanceInDb(to), "받은 계좌 잔액 (0 + 1,000 x 100)")
     }
 
+    @Test
+    fun `서로 반대 방향으로 동시에 송금해도 데드락 없이 모두 성공한다`() {
+        val a = accountService.open("김코인", 100_000).accountNumber
+        val b = accountService.open("이뱅크", 100_000).accountNumber
+
+        // 짝수 번째는 a -> b, 홀수 번째는 b -> a로 50건씩 보낸다.
+        val failures = runConcurrently(times = 100) { i ->
+            if (i % 2 == 0) transferService.transfer(a, b, 1_000) else transferService.transfer(b, a, 1_000)
+        }
+
+        assertEquals(emptyList(), failures, "실패한 송금")
+        assertEquals(emptyList(), mismatchedAmong(a, b), "원장과 잔액이 어긋난 계좌")
+        assertEquals(100_000, balanceInDb(a), "a 잔액 (50건 보내고 50건 받음)")
+        assertEquals(100_000, balanceInDb(b), "b 잔액 (50건 보내고 50건 받음)")
+    }
+
     /**
-     * task를 times번, 스레드 여러 개로 동시에 실행하고 성공한 횟수를 돌려준다.
+     * task를 times번(0번째부터), 스레드 여러 개로 동시에 실행하고 실패한 작업의 예외 이름을 돌려준다.
      * startGate가 열릴 때까지 모든 스레드가 기다렸다가 한꺼번에 출발한다.
      */
-    private fun runConcurrently(times: Int, threads: Int = 32, task: () -> Unit): Int {
+    private fun runConcurrently(times: Int, threads: Int = 32, task: (Int) -> Unit): List<String> {
         val executor = Executors.newFixedThreadPool(threads)
         val startGate = CountDownLatch(1)
-        val succeeded = AtomicInteger()
+        val failures = ConcurrentLinkedQueue<String>()
         try {
-            val futures = List(times) {
+            val futures = List(times) { i ->
                 executor.submit {
                     startGate.await()
-                    runCatching(task).onSuccess { succeeded.incrementAndGet() }
+                    runCatching { task(i) }.onFailure { failures += it.javaClass.simpleName }
                 }
             }
             startGate.countDown()
@@ -66,8 +76,11 @@ class ConcurrentTransferTests(
         } finally {
             executor.shutdownNow()
         }
-        return succeeded.get()
+        return failures.toList()
     }
+
+    private fun mismatchedAmong(vararg accountNumbers: String): List<String> =
+        ledgerAudit.check().mismatchedAccounts.filter { it in accountNumbers }
 
     private fun balanceInDb(accountNumber: String): Long? =
         jdbcTemplate.queryForObject(

@@ -31,26 +31,31 @@ class AccountService(
     fun find(accountNumber: String): AccountInfo? =
         accountRepository.findByAccountNumber(accountNumber)?.toInfo()
 
-    /** 잔액 컬럼을 줄이고 같은 트랜잭션에서 원장에 음수 한 줄을 남긴다. */
+    /**
+     * 한 계좌에서 다른 계좌로 돈을 옮긴다. 두 계좌의 잔액 컬럼을 바꾸고
+     * 같은 트랜잭션에서 원장에 음수 한 줄, 양수 한 줄을 남긴다.
+     */
     @Transactional
-    fun withdraw(accountNumber: String, amount: Long, transactionId: String) {
-        getAccount(accountNumber).withdraw(amount)
-        record(transactionId, accountNumber, -amount)
-    }
+    fun moveMoney(fromAccountNumber: String, toAccountNumber: String, amount: Long, transactionId: String) {
+        require(fromAccountNumber != toAccountNumber) { "같은 계좌로는 옮길 수 없습니다." }
 
-    /** 잔액 컬럼을 늘리고 같은 트랜잭션에서 원장에 양수 한 줄을 남긴다. */
-    @Transactional
-    fun deposit(accountNumber: String, amount: Long, transactionId: String) {
-        getAccount(accountNumber).deposit(amount)
-        record(transactionId, accountNumber, amount)
+        // 방향과 상관없이 항상 계좌 번호가 작은 쪽부터 잠근다. 순서가 같으면 서로를 기다리는 데드락이 생기지 않는다.
+        val locked = listOf(fromAccountNumber, toAccountNumber)
+            .sorted()
+            .associateWith { getAccountWithLock(it) }
+
+        locked.getValue(fromAccountNumber).withdraw(amount)
+        locked.getValue(toAccountNumber).deposit(amount)
+        record(transactionId, fromAccountNumber, -amount)
+        record(transactionId, toAccountNumber, amount)
     }
 
     private fun record(transactionId: String, accountNumber: String, amount: Long) {
         ledgerEntryRepository.save(LedgerEntry(transactionId, accountNumber, amount))
     }
 
-    private fun getAccount(accountNumber: String): Account =
-        accountRepository.findByAccountNumber(accountNumber)
+    private fun getAccountWithLock(accountNumber: String): Account =
+        accountRepository.findWithLockByAccountNumber(accountNumber)
             ?: throw NoSuchElementException("계좌를 찾을 수 없습니다: $accountNumber")
 
     /** "3333" + 무작위 8자리. 이미 있는 번호면 다시 뽑는다. */

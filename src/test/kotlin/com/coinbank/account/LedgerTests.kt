@@ -26,13 +26,12 @@ class LedgerTests(
     }
 
     @Test
-    fun `출금과 입금은 원장에 한 줄씩 남고 거래의 합은 0이다`() {
+    fun `돈을 옮기면 원장에 두 줄이 남고 거래의 합은 0이다`() {
         val from = accountService.open("김코인", 10_000).accountNumber
         val to = accountService.open("이뱅크", 0).accountNumber
         val transactionId = UUID.randomUUID().toString()
 
-        accountService.withdraw(from, 3_000, transactionId)
-        accountService.deposit(to, 3_000, transactionId)
+        accountService.moveMoney(from, to, 3_000, transactionId)
 
         assertEquals(listOf(-3_000L, 3_000L), amountsOf(transactionId))
         assertEquals(7_000, ledgerSumOf(from))
@@ -41,16 +40,17 @@ class LedgerTests(
     }
 
     @Test
-    fun `잔액이 부족해 실패한 출금은 원장에 남지 않는다`() {
+    fun `잔액이 부족해 실패하면 원장에 남지 않는다`() {
         val from = accountService.open("김코인", 1_000).accountNumber
+        val to = accountService.open("이뱅크", 0).accountNumber
         val transactionId = UUID.randomUUID().toString()
 
         assertFailsWith<InsufficientBalanceException> {
-            accountService.withdraw(from, 1_001, transactionId)
+            accountService.moveMoney(from, to, 1_001, transactionId)
         }
 
         assertEquals(emptyList(), amountsOf(transactionId))
-        assertConsistent(from)
+        assertConsistent(from, to)
     }
 
     @Test

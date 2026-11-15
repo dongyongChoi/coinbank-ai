@@ -55,7 +55,7 @@ class TransferApiTests(
     }
 
     @Test
-    fun `받는 계좌가 없으면 404이고 이미 한 출금도 롤백된다`() {
+    fun `받는 계좌가 없으면 404이고 아무것도 바뀌지 않는다`() {
         val from = accountService.open("김코인", 1_000).accountNumber
 
         postTransfer(from, "000000000000", 500).andExpect {

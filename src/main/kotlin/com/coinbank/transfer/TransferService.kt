@@ -12,13 +12,12 @@ class TransferService(
     private val transferRepository: TransferRepository,
 ) {
 
-    /** 출금, 입금, 기록을 한 트랜잭션으로 묶는다. 하나라도 실패하면 전부 롤백된다. */
+    /** 돈 옮기기와 송금 기록을 한 트랜잭션으로 묶는다. 하나라도 실패하면 전부 롤백된다. */
     @Transactional
     fun transfer(fromAccountNumber: String, toAccountNumber: String, amount: Long): TransferInfo {
         val transfer = Transfer(fromAccountNumber, toAccountNumber, amount)
 
-        accountService.withdraw(fromAccountNumber, amount, transfer.transactionId)
-        accountService.deposit(toAccountNumber, amount, transfer.transactionId)
+        accountService.moveMoney(fromAccountNumber, toAccountNumber, amount, transfer.transactionId)
 
         return transferRepository.save(transfer).toInfo()
     }
