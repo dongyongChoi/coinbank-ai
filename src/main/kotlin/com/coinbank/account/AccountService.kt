@@ -61,7 +61,8 @@ class AccountService(
     private fun getAccountForUpdate(accountNumber: String): Account =
         when (lockStrategy) {
             LockStrategy.PESSIMISTIC -> accountRepository.findWithLockByAccountNumber(accountNumber)
-            LockStrategy.OPTIMISTIC -> accountRepository.findByAccountNumber(accountNumber)
+            // REDIS는 AccountLock이 트랜잭션 밖에서 이미 잠갔으므로 DB 행은 잠그지 않는다.
+            LockStrategy.OPTIMISTIC, LockStrategy.REDIS -> accountRepository.findByAccountNumber(accountNumber)
         } ?: throw NoSuchElementException("계좌를 찾을 수 없습니다: $accountNumber")
 
     /** "3333" + 무작위 8자리. 이미 있는 번호면 다시 뽑는다. */

@@ -8,6 +8,14 @@ spring:
     url: jdbc:mysql://localhost:3306/coinbank
     username: ${MYSQL_USER}
     password: ${MYSQL_PASSWORD}
+  data:
+    redis:
+      # Redis 분산 락(Redisson)이 쓰는 접속 정보. coinbank.lock-strategy가 redis일 때만 실제로 연결한다.
+      host: localhost
+      port: 6379
+      repositories:
+        # Redis는 락에만 쓴다. Redis용 리포지토리 탐색을 끈다.
+        enabled: false
   jpa:
     open-in-view: false
     hibernate:
@@ -15,5 +23,5 @@ spring:
       ddl-auto: update
 
 coinbank:
-  # 송금할 때 계좌를 보호하는 방식: pessimistic(비관 락) | optimistic(낙관 락)
+  # 송금할 때 계좌를 보호하는 방식: pessimistic(비관 락) | optimistic(낙관 락) | redis(Redis 분산 락)
   lock-strategy: pessimistic

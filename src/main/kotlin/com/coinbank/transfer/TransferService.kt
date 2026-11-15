@@ -1,5 +1,6 @@
 package com.coinbank.transfer
 
+import com.coinbank.account.AccountLock
 import com.coinbank.account.AccountService
 import com.coinbank.transfer.internal.Transfer
 import com.coinbank.transfer.internal.TransferRepository
@@ -12,6 +13,7 @@ import kotlin.random.Random
 @Service
 class TransferService(
     private val accountService: AccountService,
+    private val accountLock: AccountLock,
     private val transferRepository: TransferRepository,
     private val transactionTemplate: TransactionTemplate,
 ) {
@@ -25,7 +27,10 @@ class TransferService(
         var attempt = 1
         while (true) {
             try {
-                return transactionTemplate.execute { transferOnce(fromAccountNumber, toAccountNumber, amount) }
+                // 락을 먼저 잡고 그 안에서 트랜잭션을 열고 닫는다. 커밋이 끝난 뒤에 락이 풀려야 한다.
+                return accountLock.withLock(listOf(fromAccountNumber, toAccountNumber)) {
+                    transactionTemplate.execute { transferOnce(fromAccountNumber, toAccountNumber, amount) }
+                }
             } catch (e: OptimisticLockingFailureException) {
                 if (attempt >= MAX_ATTEMPTS) throw e
                 log.debug("낙관 락 충돌. 다시 시도한다 ({}번째 시도 실패)", attempt)

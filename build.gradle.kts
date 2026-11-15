@@ -27,6 +27,8 @@ dependencies {
     implementation("org.springframework.modulith:spring-modulith-starter-core")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
+    // Redis 분산 락. 스타터가 Spring Data Redis 설정(spring.data.redis.*)으로 RedissonClient를 만들어 준다.
+    implementation("org.redisson:redisson-spring-boot-starter:4.8.0")
     runtimeOnly("com.mysql:mysql-connector-j")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")

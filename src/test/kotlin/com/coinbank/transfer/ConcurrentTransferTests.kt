@@ -1,10 +1,12 @@
 package com.coinbank.transfer
 
 import com.coinbank.IntegrationTest
+import com.coinbank.RedisTestcontainersConfiguration
 import com.coinbank.account.AccountService
 import com.coinbank.account.LedgerAudit
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.TestPropertySource
 import java.util.concurrent.CountDownLatch
@@ -19,6 +21,11 @@ class PessimisticLockTransferTests : ConcurrentTransferTests()
 /** 낙관 락. 설정이 달라서 스프링 컨텍스트와 MySQL 컨테이너가 따로 뜬다. */
 @TestPropertySource(properties = ["coinbank.lock-strategy=optimistic"])
 class OptimisticLockTransferTests : ConcurrentTransferTests()
+
+/** Redis 분산 락. Redis 컨테이너도 함께 띄운다. */
+@TestPropertySource(properties = ["coinbank.lock-strategy=redis"])
+@Import(RedisTestcontainersConfiguration::class)
+class RedisLockTransferTests : ConcurrentTransferTests()
 
 /**
  * 여러 스레드가 같은 계좌에서 동시에 송금해도 돈이 틀리지 않는지 확인한다.

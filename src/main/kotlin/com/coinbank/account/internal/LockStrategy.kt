@@ -7,4 +7,7 @@ enum class LockStrategy {
 
     /** 낙관 락: 잠그지 않고 읽고, 저장할 때 version이 그대로인지 확인한다. */
     OPTIMISTIC,
+
+    /** Redis 분산 락: DB 행은 잠그지 않고, 트랜잭션을 시작하기 전에 Redis에서 계좌별 락을 잡는다. */
+    REDIS,
 }
