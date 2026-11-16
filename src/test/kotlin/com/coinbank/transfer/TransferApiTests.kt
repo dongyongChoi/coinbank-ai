@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActionsDsl
 import org.springframework.test.web.servlet.post
+import java.util.UUID
 import kotlin.test.assertEquals
 
 /**
@@ -68,6 +69,52 @@ class TransferApiTests(
     }
 
     @Test
+    fun `같은 Idempotency-Key로 다시 보내면 송금은 한 번만 되고 같은 응답을 받는다`() {
+        val from = accountService.open("김코인", 10_000).accountNumber
+        val to = accountService.open("이뱅크", 0).accountNumber
+        val key = UUID.randomUUID().toString()
+
+        val first = postTransfer(from, to, 3_000, key).andExpect { status { isCreated() } }.andReturn()
+        val second = postTransfer(from, to, 3_000, key).andExpect { status { isCreated() } }.andReturn()
+
+        assertEquals(first.response.contentAsString, second.response.contentAsString)
+        assertEquals(7_000, balanceInDb(from))
+        assertEquals(3_000, balanceInDb(to))
+        assertEquals(1, transferCountInDb(from))
+        assertEquals(7_000, ledgerSumInDb(from))
+    }
+
+    @Test
+    fun `같은 Idempotency-Key로 내용이 다른 요청을 보내면 400이고 아무것도 바뀌지 않는다`() {
+        val from = accountService.open("김코인", 10_000).accountNumber
+        val to = accountService.open("이뱅크", 0).accountNumber
+        val key = UUID.randomUUID().toString()
+        postTransfer(from, to, 3_000, key).andExpect { status { isCreated() } }
+
+        postTransfer(from, to, 5_000, key).andExpect {
+            status { isBadRequest() }
+        }
+
+        assertEquals(7_000, balanceInDb(from))
+        assertEquals(1, transferCountInDb(from))
+    }
+
+    @Test
+    fun `Idempotency-Key 헤더가 없으면 400`() {
+        val from = accountService.open("김코인", 1_000).accountNumber
+        val to = accountService.open("이뱅크", 0).accountNumber
+
+        mockMvc.post("/transfers") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"fromAccountNumber": "$from", "toAccountNumber": "$to", "amount": 500}"""
+        }.andExpect {
+            status { isBadRequest() }
+        }
+
+        assertEquals(1_000, balanceInDb(from))
+    }
+
+    @Test
     fun `같은 계좌로 보내면 400`() {
         val from = accountService.open("김코인", 1_000).accountNumber
 
@@ -86,8 +133,15 @@ class TransferApiTests(
         }
     }
 
-    private fun postTransfer(from: String, to: String, amount: Long): ResultActionsDsl =
+    /** 키를 따로 주지 않으면 요청마다 새 키를 붙인다. */
+    private fun postTransfer(
+        from: String,
+        to: String,
+        amount: Long,
+        idempotencyKey: String = UUID.randomUUID().toString(),
+    ): ResultActionsDsl =
         mockMvc.post("/transfers") {
+            header("Idempotency-Key", idempotencyKey)
             contentType = MediaType.APPLICATION_JSON
             content = """{"fromAccountNumber": "$from", "toAccountNumber": "$to", "amount": $amount}"""
         }

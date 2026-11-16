@@ -32,8 +32,10 @@ Content-Type: application/json
 %}
 
 ### 3. 송금: 3,000원
+# Idempotency-Key는 요청마다 고유해야 한다. 여기서는 새로 만든 계좌 번호를 넣어 실행할 때마다 달라지게 했다.
 POST {{host}}/transfers
 Content-Type: application/json
+Idempotency-Key: demo-{{fromAccount}}-3000
 
 {
   "fromAccountNumber": "{{fromAccount}}",
@@ -43,6 +45,23 @@ Content-Type: application/json
 
 > {%
     client.test("201 Created", () => client.assert(response.status === 201));
+    client.global.set("transferId", response.body.transferId);
+%}
+
+### 3-1. 같은 Idempotency-Key로 다시 송금 (기대: 같은 송금 번호, 돈은 다시 빠지지 않음)
+POST {{host}}/transfers
+Content-Type: application/json
+Idempotency-Key: demo-{{fromAccount}}-3000
+
+{
+  "fromAccountNumber": "{{fromAccount}}",
+  "toAccountNumber": "{{toAccount}}",
+  "amount": 3000
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201));
+    client.test("같은 송금 번호", () => client.assert(response.body.transferId == client.global.get("transferId")));
 %}
 
 ### 4. 보내는 사람 잔액 조회 (기대: 7,000원)
@@ -62,6 +81,7 @@ GET {{host}}/accounts/{{toAccount}}
 ### 6. 실패: 잔액 부족 (기대: 422)
 POST {{host}}/transfers
 Content-Type: application/json
+Idempotency-Key: {{$random.uuid}}
 
 {
   "fromAccountNumber": "{{fromAccount}}",
@@ -73,9 +93,10 @@ Content-Type: application/json
     client.test("422 Unprocessable Content", () => client.assert(response.status === 422));
 %}
 
-### 7. 실패: 받는 계좌 없음 (기대: 404, 출금은 롤백)
+### 7. 실패: 받는 계좌 없음 (기대: 404)
 POST {{host}}/transfers
 Content-Type: application/json
+Idempotency-Key: {{$random.uuid}}
 
 {
   "fromAccountNumber": "{{fromAccount}}",
@@ -90,6 +111,7 @@ Content-Type: application/json
 ### 8. 실패: 같은 계좌로 송금 (기대: 400)
 POST {{host}}/transfers
 Content-Type: application/json
+Idempotency-Key: {{$random.uuid}}
 
 {
   "fromAccountNumber": "{{fromAccount}}",

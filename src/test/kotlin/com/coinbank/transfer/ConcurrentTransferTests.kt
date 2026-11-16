@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.TestPropertySource
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.test.assertEquals
@@ -47,7 +48,7 @@ abstract class ConcurrentTransferTests {
         val to = accountService.open("이뱅크", 0).accountNumber
 
         val failures = runConcurrently(times = 100) {
-            transferService.transfer(from, to, 1_000)
+            transferService.transfer(from, to, 1_000, newKey())
         }
 
         assertEquals(emptyList(), failures, "실패한 송금")
@@ -64,7 +65,7 @@ abstract class ConcurrentTransferTests {
 
         // 짝수 번째는 a -> b, 홀수 번째는 b -> a로 50건씩 보낸다.
         val failures = runConcurrently(times = 100) { i ->
-            if (i % 2 == 0) transferService.transfer(a, b, 1_000) else transferService.transfer(b, a, 1_000)
+            if (i % 2 == 0) transferService.transfer(a, b, 1_000, newKey()) else transferService.transfer(b, a, 1_000, newKey())
         }
 
         assertEquals(emptyList(), failures, "실패한 송금")
@@ -72,6 +73,27 @@ abstract class ConcurrentTransferTests {
         assertEquals(100_000, balanceInDb(a), "a 잔액 (50건 보내고 50건 받음)")
         assertEquals(100_000, balanceInDb(b), "b 잔액 (50건 보내고 50건 받음)")
     }
+
+    @Test
+    fun `같은 Idempotency-Key로 동시에 20번 요청해도 송금은 한 번만 된다`() {
+        val from = accountService.open("김코인", 100_000).accountNumber
+        val to = accountService.open("이뱅크", 0).accountNumber
+        val key = newKey()
+        val transferIds = ConcurrentLinkedQueue<Long>()
+
+        val failures = runConcurrently(times = 20) {
+            transferIds += transferService.transfer(from, to, 1_000, key).transferId
+        }
+
+        assertEquals(emptyList(), failures, "실패한 요청")
+        assertEquals(1, transferIds.distinct().size, "20번 모두 같은 송금 번호를 받는다")
+        assertEquals(1, transferCountInDb(from), "송금 기록 수")
+        assertEquals(emptyList(), mismatchedAmong(from, to), "원장과 잔액이 어긋난 계좌")
+        assertEquals(99_000, balanceInDb(from), "보낸 계좌 잔액 (1,000원이 한 번만 빠짐)")
+        assertEquals(1_000, balanceInDb(to), "받은 계좌 잔액")
+    }
+
+    private fun newKey(): String = UUID.randomUUID().toString()
 
     /**
      * task를 times번(0번째부터), 스레드 여러 개로 동시에 실행하고 실패한 작업의 예외 이름을 돌려준다.

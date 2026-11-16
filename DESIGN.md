@@ -72,6 +72,6 @@ flowchart LR
 - [x] 3. 비관 락 + 계좌 번호 정렬로 데드락 방지
 - [x] 4. 낙관 락(@Version), 재시도, 락 전략 설정
 - [x] 5. Redis 분산 락(Redisson)
-- [ ] 6. Idempotency-Key 헤더 + 유니크 제약  ← 지금
-- [ ] 7. otel-lgtm 관측과 k6 송금 시나리오
+- [x] 6. Idempotency-Key 헤더 + 유니크 제약
+- [ ] 7. otel-lgtm 관측과 k6 송금 시나리오  ← 지금
 - [ ] 8. 락 3안 1만 건 측정, 비교표, ADR(001 확정·003 락 전략·004 멱등 키)
