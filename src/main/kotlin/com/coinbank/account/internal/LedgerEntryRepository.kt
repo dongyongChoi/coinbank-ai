@@ -11,6 +11,10 @@ interface LedgerEntryRepository : Repository<LedgerEntry, Long> {
 
     fun save(entry: LedgerEntry): LedgerEntry
 
+    /** 한 계좌의 원장 합산. B안(원장 합산만)에서는 이 값이 곧 잔액이다. */
+    @Query("select coalesce(sum(e.amount), 0) from LedgerEntry e where e.accountNumber = :accountNumber")
+    fun sumAmountByAccountNumber(accountNumber: String): Long
+
     /** 잔액 컬럼이 그 계좌의 원장 합산과 다른 계좌 번호. */
     @Query(
         """

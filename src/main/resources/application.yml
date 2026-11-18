@@ -48,3 +48,5 @@ management:
 coinbank:
   # 송금할 때 계좌를 보호하는 방식: pessimistic(비관 락) | optimistic(낙관 락) | redis(Redis 분산 락)
   lock-strategy: pessimistic
+  # 잔액을 어디서 읽는가 (ADR 001): ledger-and-column(C안, 원장 + 잔액 컬럼) | ledger-only(B안, 원장 합산만)
+  balance-model: ledger-and-column

@@ -42,3 +42,9 @@
 - AI 사용: Claude Code가 측정 스크립트(`k6/bench-locks.sh`)를 작성해 6번의 측정을 돌리고, ADR 003·004 초안과 ADR 001 측정 결과를 썼다. ADR의 결정 이유는 직접 쓴다.
 - 소요 시간:
 - AI가 놓친 버그: 측정 스크립트가 macOS 기본 bash(3.2)에서 빈 배열 때문에 `unbound variable`로 멈췄다. 300건 시험 실행에서 발견해 고쳤다.
+
+## M2-9 원장 합산만(ADR 001의 B안) 구현과 측정 (2026-11-18)
+- AI 사용: Claude Code가 `BalanceModel`, B안의 송금·잔액 조회, 테스트(`LedgerOnlyBalanceTests`)를 작성하고 B·C를 측정했다. ADR 001 결과와 ADR 003·004의 결정 이유도 요청에 따라 Claude Code가 썼다.
+- 소요 시간:
+- AI가 놓친 버그:
+- 참고: B안, 계좌 100개의 첫 측정에서 테스트가 한 번 11초 동안 멈췄다. 원인을 찾지 못해 다시 쟀다.

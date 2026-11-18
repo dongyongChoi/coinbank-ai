@@ -2,6 +2,7 @@ package com.coinbank.account
 
 import com.coinbank.account.internal.Account
 import com.coinbank.account.internal.AccountRepository
+import com.coinbank.account.internal.BalanceModel
 import com.coinbank.account.internal.LedgerEntry
 import com.coinbank.account.internal.LedgerEntryRepository
 import com.coinbank.account.internal.LockStrategy
@@ -17,7 +18,16 @@ class AccountService(
     private val accountRepository: AccountRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
     @Value("\${coinbank.lock-strategy}") private val lockStrategy: LockStrategy,
+    @Value("\${coinbank.balance-model}") private val balanceModel: BalanceModel,
 ) {
+
+    init {
+        // 낙관 락은 잔액 컬럼이 바뀔 때 오르는 version으로 충돌을 알아챈다. B안은 컬럼을 고치지 않아서
+        // version이 그대로이고, 동시 출금이 둘 다 통과해 잔액이 음수가 될 수 있다. 그래서 함께 쓰지 못하게 막는다.
+        require(!(balanceModel == BalanceModel.LEDGER_ONLY && lockStrategy == LockStrategy.OPTIMISTIC)) {
+            "coinbank.balance-model=ledger-only는 낙관 락과 함께 쓸 수 없습니다."
+        }
+    }
 
     @Transactional
     fun open(ownerName: String, initialBalance: Long = 0): AccountInfo {
@@ -34,6 +44,13 @@ class AccountService(
     fun find(accountNumber: String): AccountInfo? =
         accountRepository.findByAccountNumber(accountNumber)?.toInfo()
 
+    /** 지금 잔액. C안은 잔액 컬럼, B안은 원장 합산이다. */
+    private fun balanceOf(account: Account): Long =
+        when (balanceModel) {
+            BalanceModel.LEDGER_AND_COLUMN -> account.balance
+            BalanceModel.LEDGER_ONLY -> ledgerEntryRepository.sumAmountByAccountNumber(account.accountNumber)
+        }
+
     /**
      * 한 계좌에서 다른 계좌로 돈을 옮긴다. 두 계좌의 잔액 컬럼을 바꾸고
      * 같은 트랜잭션에서 원장에 음수 한 줄, 양수 한 줄을 남긴다.
@@ -48,8 +65,18 @@ class AccountService(
             .sorted()
             .associateWith { getAccountForUpdate(it) }
 
-        accounts.getValue(fromAccountNumber).withdraw(amount)
-        accounts.getValue(toAccountNumber).deposit(amount)
+        when (balanceModel) {
+            BalanceModel.LEDGER_AND_COLUMN -> {
+                accounts.getValue(fromAccountNumber).withdraw(amount)
+                accounts.getValue(toAccountNumber).deposit(amount)
+            }
+            // 잔액 컬럼은 고치지 않는다. 계좌 행은 위에서 잠갔으므로, 합산하는 동안 같은 계좌의 다른 송금은 기다린다.
+            BalanceModel.LEDGER_ONLY -> {
+                require(amount > 0) { "금액은 0보다 커야 합니다." }
+                val balance = balanceOf(accounts.getValue(fromAccountNumber))
+                if (balance < amount) throw InsufficientBalanceException(fromAccountNumber, balance, amount)
+            }
+        }
         record(transactionId, fromAccountNumber, -amount)
         record(transactionId, toAccountNumber, amount)
     }
@@ -70,5 +97,5 @@ class AccountService(
         generateSequence { "3333%08d".format(Random.nextInt(100_000_000)) }
             .first { !accountRepository.existsByAccountNumber(it) }
 
-    private fun Account.toInfo() = AccountInfo(accountNumber, ownerName, balance, createdAt)
+    private fun Account.toInfo() = AccountInfo(accountNumber, ownerName, balanceOf(this), createdAt)
 }

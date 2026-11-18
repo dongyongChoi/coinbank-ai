@@ -25,7 +25,7 @@ coinbank-ai/
 │   ├── notification/                        M1 뼈대 → M3 알림 컨슈머 → M5 삭제
 │   ├── home/                                M1 뼈대 → M4 홈 집계
 │   └── advisor/                             M6 AI 소비 상담
-├── src/test/kotlin/com/coinbank/            M1부터 (@IntegrationTest, Testcontainers, ModularityTests)
+├── src/test/kotlin/com/coinbank/            M1부터 (@IntegrationTest, Testcontainers, ModularityTests) → M2 락 전략별 동시 송금 테스트
 └── notification-service/                    M5 분리된 알림 서비스
 ```
 
@@ -60,13 +60,13 @@ flowchart LR
 
 ## 마일스톤
 - [x] M1 Kotlin 수직 슬라이스 (1주차): 송금 1건이 API → DB → 테스트 → CI를 통과한다
-- [ ] M2 동시성·정합성 (2주차): 동시 송금 1만 건에서 불일치·중복 0건, 락 3안 비교표
+- [x] M2 동시성·정합성 (2주차): 동시 송금 1만 건에서 불일치·중복 0건, 락 3안 비교표
 - [ ] M3 특판 적금 + Kafka Outbox (3주차): 초과 개설 0건, 이벤트 유실 0건
 - [ ] M4 비동기 홈 집계 (4주차): 순차·Virtual Thread·Coroutine p95 비교표
 - [ ] M5 알림 모듈 점진 이관 (5주차): 알림을 별도 서비스로 분리하고 모놀리스 코드 삭제
 - [ ] M6 금융 AI + 마무리 (6주차, Could): 읽기 전용 AI 상담, README·회고
 
-## 현재 마일스톤: M2 동시성·정합성
+## 현재 마일스톤: M2 동시성·정합성 (완료, 2026-11-18)
 - [x] 1. 동시 송금 테스트로 갱신 유실 재현
 - [x] 2. 복식 부기 원장과 "원장 합산 = 잔액" 검사
 - [x] 3. 비관 락 + 계좌 번호 정렬로 데드락 방지
@@ -74,4 +74,5 @@ flowchart LR
 - [x] 5. Redis 분산 락(Redisson)
 - [x] 6. Idempotency-Key 헤더 + 유니크 제약
 - [x] 7. otel-lgtm 관측과 k6 송금 시나리오
-- [x] 8. 락 3안 1만 건 측정, 비교표, ADR(001 확정·003 락 전략·004 멱등 키)
+- [x] 8. 락 3안 1만 건 측정, 비교표, ADR(003 락 전략·004 멱등 키)
+- [x] 9. 원장 합산만(ADR 001의 B안) 구현과 측정, ADR 001 확정

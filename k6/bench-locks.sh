@@ -3,6 +3,7 @@
 #
 # 실행 (프로젝트 루트에서, docker compose up -d 로 MySQL·Redis·otel-lgtm이 떠 있어야 한다):
 #   ./k6/bench-locks.sh [결과 폴더]
+#   BALANCE_MODEL=ledger-only STRATEGIES=pessimistic ./k6/bench-locks.sh   # ADR 001의 B안
 #
 # 측정할 때마다 로컬 MySQL의 account, transfer, ledger_entry 테이블을 비운다.
 # 전략마다 앱을 새로 띄우고, 조건마다 1,000건으로 몸을 풀고(JVM 워밍업) 다시 비운 뒤 본 측정을 한다.
@@ -11,6 +12,7 @@ set -euo pipefail
 OUT=${1:-build/bench}
 STRATEGIES=${STRATEGIES:-"pessimistic optimistic redis"}
 ACCOUNTS_LIST=${ACCOUNTS_LIST:-"100 2"}   # 100: 요청이 흩어짐, 2: 한 계좌 쌍에 몰림
+BALANCE_MODEL=${BALANCE_MODEL:-ledger-and-column}   # ledger-and-column(C안) | ledger-only(B안)
 VUS=${VUS:-50}
 ITERATIONS=${ITERATIONS:-10000}
 JAR=build/libs/coinbank-0.0.1-SNAPSHOT.jar
@@ -27,12 +29,14 @@ reset_db() {
 }
 
 # 측정이 끝난 뒤 돈이 틀린 곳이 있는지 DB에서 직접 센다.
+# 순서: 송금 기록, 중복 키, 원장과 잔액 컬럼이 다른 계좌(B안에서는 의미 없음), 합이 0이 아닌 거래, 원장 합산이 음수인 계좌
 check_db() {
   sql "SELECT
     (SELECT COUNT(*) FROM transfer),
     (SELECT COUNT(*) - COUNT(DISTINCT idempotency_key) FROM transfer),
     (SELECT COUNT(*) FROM account a WHERE a.balance <> (SELECT COALESCE(SUM(e.amount), 0) FROM ledger_entry e WHERE e.account_number = a.account_number)),
-    (SELECT COUNT(*) FROM (SELECT transaction_id FROM ledger_entry GROUP BY transaction_id HAVING SUM(amount) <> 0) t);"
+    (SELECT COUNT(*) FROM (SELECT transaction_id FROM ledger_entry GROUP BY transaction_id HAVING SUM(amount) <> 0) t),
+    (SELECT COUNT(*) FROM (SELECT account_number FROM ledger_entry WHERE account_number <> 'EXTERNAL' GROUP BY account_number HAVING SUM(amount) < 0) t);"
 }
 
 run_k6() { # $1 accounts, $2 iterations, $3 summary file (없으면 저장 안 함)
@@ -47,17 +51,18 @@ run_k6() { # $1 accounts, $2 iterations, $3 summary file (없으면 저장 안 �
 
 for strategy in $STRATEGIES; do
   echo "== $strategy: 앱 시작"
-  java -jar "$JAR" --coinbank.lock-strategy="$strategy" > "$OUT/app-$strategy.log" 2>&1 &
+  java -jar "$JAR" --coinbank.lock-strategy="$strategy" --coinbank.balance-model="$BALANCE_MODEL" > "$OUT/app-$strategy.log" 2>&1 &
   APP_PID=$!
   trap 'kill $APP_PID 2>/dev/null || true' EXIT
   curl -s --retry 60 --retry-delay 1 --retry-connrefused -o /dev/null http://localhost:8080/actuator/health
 
   for accounts in $ACCOUNTS_LIST; do
     name="$strategy-accounts$accounts"
+    [[ "$BALANCE_MODEL" == ledger-only ]] && name="$strategy-ledger-only-accounts$accounts"
     reset_db; run_k6 "$accounts" 1000
     reset_db; run_k6 "$accounts" "$ITERATIONS" "$name.json"
     echo "$(check_db)" > "$OUT/$name.db"
-    echo "   $name 끝 (송금 기록, 중복 키, 어긋난 계좌, 합이 0이 아닌 거래): $(cat "$OUT/$name.db")"
+    echo "   $name 끝 (송금 기록, 중복 키, 잔액 컬럼과 다른 계좌, 합이 0이 아닌 거래, 음수 계좌): $(cat "$OUT/$name.db")"
   done
 
   kill $APP_PID; wait $APP_PID 2>/dev/null || true
