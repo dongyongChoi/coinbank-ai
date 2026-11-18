@@ -32,3 +32,8 @@
 - AI 사용: Claude Code가 `Transfer.idempotencyKey`, `TransferService`의 멱등 처리, 테스트 6개를 작성하고 실행했다. 유니크 제약을 뺀 실험도 Claude Code가 했다.
 - 소요 시간:
 - AI가 놓친 버그:
+
+## M2-7 otel-lgtm 관측과 k6 송금 시나리오 (2026-11-17)
+- AI 사용: Claude Code가 docker-compose의 otel-lgtm·k6 서비스, OTLP 설정, `k6/transfer.js`를 작성했다. 앱을 띄워 300건 시험 실행을 하고 지표와 트레이스가 Grafana에 들어온 것까지 Claude Code가 확인했다.
+- 소요 시간:
+- AI가 놓친 버그: 테스트에서는 스프링 부트가 지표 내보내기를 알아서 끈다고 가정했는데 아니었다. 테스트 로그에 내보내기 실패 경고가 찍힌 것을 보고 `@IntegrationTest`에서 직접 껐다.
