@@ -13,9 +13,9 @@ coinbank-ai/
 ├── docker-compose.yml, .env.example         M1 MySQL·Redis → M2 otel-lgtm·k6 → M3 Kafka
 ├── .github/workflows/ci.yml                 M1
 ├── http/coinbank.http                       M1 API 시연
-├── docs/adr/                                M1부터 계속 (001 원장 모델, 002 모듈 경계)
+├── docs/adr/                                M1부터 계속 (001 원장 모델, 002 모듈 경계, 003 락 전략, 004 멱등 키)
 ├── docs/ai-log.md                           M2부터 AI 활용 기록
-├── k6/transfer.js                           M2 동시 송금 부하 테스트
+├── k6/                                      M2 transfer.js 부하 시나리오, bench-locks.sh 락 3안 측정
 ├── src/main/kotlin/com/coinbank/
 │   ├── CoinbankApplication.kt               M1
 │   ├── ApiExceptionHandler.kt               M1 도메인 예외 → HTTP 응답
@@ -74,4 +74,4 @@ flowchart LR
 - [x] 5. Redis 분산 락(Redisson)
 - [x] 6. Idempotency-Key 헤더 + 유니크 제약
 - [x] 7. otel-lgtm 관측과 k6 송금 시나리오
-- [ ] 8. 락 3안 1만 건 측정, 비교표, ADR(001 확정·003 락 전략·004 멱등 키)  ← 지금
+- [x] 8. 락 3안 1만 건 측정, 비교표, ADR(001 확정·003 락 전략·004 멱등 키)

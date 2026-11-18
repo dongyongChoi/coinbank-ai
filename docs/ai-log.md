@@ -37,3 +37,8 @@
 - AI 사용: Claude Code가 docker-compose의 otel-lgtm·k6 서비스, OTLP 설정, `k6/transfer.js`를 작성했다. 앱을 띄워 300건 시험 실행을 하고 지표와 트레이스가 Grafana에 들어온 것까지 Claude Code가 확인했다.
 - 소요 시간:
 - AI가 놓친 버그: 테스트에서는 스프링 부트가 지표 내보내기를 알아서 끈다고 가정했는데 아니었다. 테스트 로그에 내보내기 실패 경고가 찍힌 것을 보고 `@IntegrationTest`에서 직접 껐다.
+
+## M2-8 락 3안 1만 건 측정, 비교표, ADR (2026-11-18)
+- AI 사용: Claude Code가 측정 스크립트(`k6/bench-locks.sh`)를 작성해 6번의 측정을 돌리고, ADR 003·004 초안과 ADR 001 측정 결과를 썼다. ADR의 결정 이유는 직접 쓴다.
+- 소요 시간:
+- AI가 놓친 버그: 측정 스크립트가 macOS 기본 bash(3.2)에서 빈 배열 때문에 `unbound variable`로 멈췄다. 300건 시험 실행에서 발견해 고쳤다.
