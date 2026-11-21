@@ -8,6 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 /**
  * 원장 한 줄. 한 계좌의 돈이 얼마나 늘거나 줄었는지 적는다.
@@ -38,7 +39,9 @@ class LedgerEntry(
     val id: Long? = null
 
     @Column(nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now()
+    // MySQL DATETIME(6)는 마이크로초까지만 저장한다. 리눅스 JVM의 Instant.now()는 나노초까지 있어서,
+    // 자르지 않으면 저장 직후 응답과 DB에서 다시 읽은 값이 달라진다.
+    val createdAt: Instant = Instant.now().truncatedTo(ChronoUnit.MICROS)
 
     init {
         require(amount != 0L) { "원장 금액은 0일 수 없습니다." }
