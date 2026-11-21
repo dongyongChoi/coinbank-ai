@@ -1,6 +1,7 @@
 package com.coinbank.product
 
 import com.coinbank.account.AccountService
+import com.coinbank.product.internal.ProductQuota
 import com.coinbank.product.internal.SavingsProduct
 import com.coinbank.product.internal.SavingsProductRepository
 import com.coinbank.product.internal.Subscription
@@ -15,17 +16,22 @@ class ProductService(
     private val productRepository: SavingsProductRepository,
     private val subscriptionRepository: SubscriptionRepository,
     private val accountService: AccountService,
+    private val productQuota: ProductQuota,
 ) {
 
     @Transactional
-    fun create(name: String, quota: Int): ProductInfo =
-        productRepository.save(SavingsProduct(name, quota)).toInfo()
+    fun create(name: String, quota: Int): ProductInfo {
+        val product = productRepository.save(SavingsProduct(name, quota))
+        productQuota.open(checkNotNull(product.id), quota)
+        return product.toInfo()
+    }
 
     /**
-     * 특판 적금에 가입한다. 지금 가입 수를 세고, 한도보다 적으면 가입을 기록한다.
+     * 특판 적금에 가입한다. Redis에서 자리를 하나 가져온 요청만 가입 기록을 남긴다.
      *
-     * M3-1 기준선: 아무것도 잠그지 않는다. "세고 → 비교하고 → 넣는" 사이에 다른 요청이 끼어들 수 있어서
-     * 동시에 몰리면 한도를 넘어 개설된다. M3-2에서 Redis 원자적 차감으로 막는다.
+     * M3-1에서는 DB에서 가입 수를 세고 비교했다. 세는 것과 넣는 것 사이에 다른 요청이 끼어들어
+     * 한도를 넘었다. 이제 "남은 자리 확인 → 하나 빼기"를 Redis가 한 번에 하므로 한도보다 많이 통과할 수 없다.
+     * Redis에서 자리를 뺀 뒤 DB 저장이 실패하면 자리 하나가 사라진다. M3-3에서 다룬다.
      */
     @Transactional
     fun subscribe(productId: Long, accountNumber: String): SubscriptionInfo {
@@ -33,8 +39,7 @@ class ProductService(
         val product = productRepository.findByIdOrNull(productId)
             ?: throw NoSuchElementException("상품을 찾을 수 없습니다: $productId")
 
-        val subscribed = subscriptionRepository.countByProductId(productId)
-        if (subscribed >= product.quota) throw SoldOutException(productId, product.quota)
+        if (!productQuota.take(productId)) throw SoldOutException(productId, product.quota)
 
         return subscriptionRepository.save(Subscription(productId, accountNumber)).toInfo()
     }

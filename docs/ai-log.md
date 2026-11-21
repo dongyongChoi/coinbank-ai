@@ -53,3 +53,9 @@
 - AI 사용: Claude Code가 product 모듈(`ProductService`, `SavingsProduct`, `Subscription`, `ProductController`)과 테스트(`ConcurrentSubscriptionTests`)를 작성하고 실행했다.
 - 소요 시간:
 - AI가 놓친 버그: 처음 테스트는 상품 1개에 100명이 몰리는 경우만 봤는데, 10번 중 4번만 초과 개설이 났다. 같은 몰림을 상품 10개에 일으키도록 바꿔 매번 잡히게 했다.
+
+## M3-2 Redis 원자적 한도 차감 (2026-11-21)
+- AI 사용: Claude Code가 `ProductQuota`(Lua 스크립트로 "확인 후 빼기")를 작성해 `ProductService`에 연결하고, 꺼 두었던 동시 가입 테스트를 켜서 3번 돌렸다.
+- 소요 시간:
+- AI가 놓친 버그: 테스트 파일을 스크립트로 고칠 때 주석 들여쓰기가 달라 `@Import`가 빠졌다. 고친 뒤 파일을 다시 열어 보고 찾았다.
+- 확인: Redis가 꺼진 상태에서도 Redis를 쓰지 않는 테스트가 모두 통과했다(처음 쓸 때 연결).

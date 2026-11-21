@@ -10,11 +10,12 @@ spring:
     password: ${MYSQL_PASSWORD}
   data:
     redis:
-      # Redis 분산 락(Redisson)이 쓰는 접속 정보. coinbank.lock-strategy가 redis일 때만 실제로 연결한다.
+      # Redis 접속 정보. 송금의 Redis 분산 락(lock-strategy=redis)과 특판 적금의 남은 자리가 쓴다.
+      # 처음 쓸 때 연결하므로, 특판을 쓰지 않고 비관·낙관 락으로만 송금하면 Redis 없이도 앱이 뜬다.
       host: localhost
       port: 6379
       repositories:
-        # Redis는 락에만 쓴다. Redis용 리포지토리 탐색을 끈다.
+        # Redis는 락과 숫자 세기에만 쓴다. Redis용 리포지토리 탐색을 끈다.
         enabled: false
   jpa:
     open-in-view: false
