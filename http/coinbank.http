@@ -129,3 +129,41 @@ GET {{host}}/accounts/{{fromAccount}}
 > {%
     client.test("잔액 7000", () => client.assert(response.body.balance === 7000));
 %}
+
+### 10. 특판 적금 상품 만들기: 선착순 1명 (M3)
+POST {{host}}/products
+Content-Type: application/json
+
+{
+  "name": "특판 적금",
+  "quota": 1
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201));
+    client.global.set("productId", response.body.productId);
+%}
+
+### 11. 특판 가입: 첫 번째 (기대: 201)
+POST {{host}}/products/{{productId}}/subscriptions
+Content-Type: application/json
+
+{
+  "accountNumber": "{{fromAccount}}"
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201));
+%}
+
+### 12. 특판 가입: 한도가 찬 뒤 (기대: 409)
+POST {{host}}/products/{{productId}}/subscriptions
+Content-Type: application/json
+
+{
+  "accountNumber": "{{toAccount}}"
+}
+
+> {%
+    client.test("409 Conflict", () => client.assert(response.status === 409));
+%}

@@ -1,6 +1,7 @@
 package com.coinbank
 
 import com.coinbank.account.InsufficientBalanceException
+import com.coinbank.product.SoldOutException
 import org.springframework.dao.ConcurrencyFailureException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -29,4 +30,9 @@ class ApiExceptionHandler {
     @ExceptionHandler(ConcurrencyFailureException::class)
     fun handleConflict(e: ConcurrencyFailureException): ProblemDetail =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "같은 계좌에 요청이 몰렸습니다. 잠시 후 다시 시도해 주세요.")
+
+    /** 선착순 한도가 다 찼다. 지금 상품 상태와 부딪힌 요청이라 409로 돌려준다. */
+    @ExceptionHandler(SoldOutException::class)
+    fun handleSoldOut(e: SoldOutException): ProblemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "마감된 상품입니다.")
 }

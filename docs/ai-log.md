@@ -48,3 +48,8 @@
 - 소요 시간:
 - AI가 놓친 버그:
 - 참고: B안, 계좌 100개의 첫 측정에서 테스트가 한 번 11초 동안 멈췄다. 원인을 찾지 못해 다시 쟀다.
+
+## M3-1 특판 적금 가입 API와 초과 개설 재현 (2026-11-21)
+- AI 사용: Claude Code가 product 모듈(`ProductService`, `SavingsProduct`, `Subscription`, `ProductController`)과 테스트(`ConcurrentSubscriptionTests`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그: 처음 테스트는 상품 1개에 100명이 몰리는 경우만 봤는데, 10번 중 4번만 초과 개설이 났다. 같은 몰림을 상품 10개에 일으키도록 바꿔 매번 잡히게 했다.
