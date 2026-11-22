@@ -6,6 +6,7 @@ import com.coinbank.product.internal.SavingsProduct
 import com.coinbank.product.internal.SavingsProductRepository
 import com.coinbank.product.internal.Subscription
 import com.coinbank.product.internal.SubscriptionRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -18,6 +19,7 @@ class ProductService(
     private val accountService: AccountService,
     private val productQuota: ProductQuota,
     private val transactionTemplate: TransactionTemplate,
+    private val events: ApplicationEventPublisher,
 ) {
 
     @Transactional
@@ -46,7 +48,10 @@ class ProductService(
         try {
             return checkNotNull(
                 transactionTemplate.execute {
-                    subscriptionRepository.save(Subscription(productId, accountNumber)).toInfo()
+                    val info = subscriptionRepository.save(Subscription(productId, accountNumber)).toInfo()
+                    // 가입 기록과 같은 트랜잭션에서 이벤트를 적는다. Kafka로는 커밋 뒤에 Modulith가 보낸다.
+                    events.publishEvent(SubscriptionCreated(info.subscriptionId, productId, accountNumber, info.createdAt))
+                    info
                 },
             )
         } catch (e: Exception) {

@@ -71,3 +71,11 @@
 - 소요 시간:
 - AI가 놓친 버그:
 - 확인: Kafka 컨테이너 없이 뜨는 다른 테스트 로그에 Kafka 연결 시도가 0번이었다(메시지를 처음 보낼 때 연결).
+
+## M3-5 Outbox: Modulith 이벤트 발행 기록과 Kafka 외부 발행 (2026-11-22)
+- AI 사용: 직접 만들기(A)와 Modulith(B)를 Claude Code가 비교해 A를 추천했고, B를 골랐다. Claude Code가 이벤트(`TransferCompleted`, `SubscriptionCreated`), 발행 코드, 의존성, 테스트(`EventPublicationTests`, `@KafkaTest`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그:
+  - Modulith가 Kafka 메시지 내용을 바이트로 주고받게 설정을 바꾸는 것을 몰랐다. 테스트가 `ClassCastException`으로 실패해서 Modulith jar의 `kafka-json.properties`를 열어 보고 알았다. M3-4의 연결 테스트도 바이트로 고쳤다.
+  - Kafka가 없는 테스트에서도 이벤트를 Kafka로 보내려다 기다리느라 전체 테스트가 1분대에서 4분 33초로 늘었다. 테스트 결과는 초록이라 시간을 보지 않았으면 놓쳤다. 이런 테스트에서는 외부 발행을 끄고 `@KafkaTest`에서만 켰다.
+- 참고: 한 번은 컴퓨터가 잠들어 전체 테스트가 1시간 38분으로 찍혔다. `caffeinate`로 다시 재서 1분 1초.

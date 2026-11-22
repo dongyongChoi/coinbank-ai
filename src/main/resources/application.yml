@@ -19,6 +19,8 @@ spring:
         enabled: false
   kafka:
     # docker-compose의 Kafka. 메시지를 처음 보낼 때 연결하므로, Kafka가 없어도 앱은 뜬다.
+    # 메시지 내용(value)의 직렬화는 적지 않는다. spring-modulith-events-kafka가 바이트로 바꾸고,
+    # 그 위에서 이벤트를 JSON으로 만들어 보낸다 (spring.modulith.events.kafka.enable-json 기본값 true).
     bootstrap-servers: localhost:9092
   jpa:
     open-in-view: false

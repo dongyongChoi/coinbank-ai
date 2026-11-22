@@ -29,7 +29,7 @@ coinbank-ai/
 └── notification-service/                    M5 분리된 알림 서비스
 ```
 
-모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`, `LedgerAudit`, `AccountLock`, `ProductService`, `QuotaAudit`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
+모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`, `LedgerAudit`, `AccountLock`, `ProductService`, `QuotaAudit`, 이벤트 `TransferCompleted`·`SubscriptionCreated`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
 
 ```mermaid
 flowchart LR
@@ -53,7 +53,7 @@ flowchart LR
 - Spring Modulith: 모듈 경계를 테스트로 강제하고 M5 분리의 길을 연다.
 - MySQL 8.4 + Spring Data JPA: 익숙한 도구로 락 동작을 깊게 판다.
 - Redis 7 + Redisson (M2~M3): 분산 락, 원자적 한도 차감.
-- Kafka KRaft 단일 노드 (M3): Outbox, 멱등 컨슈머.
+- Kafka KRaft 단일 노드 (M3): Outbox(Spring Modulith 이벤트 발행 기록 + Kafka 외부 발행), 멱등 컨슈머.
 - Coroutines vs Virtual Threads (M4): 같은 API에서 맞비교.
 - Spring AI 2.0.x (M6): 읽기 전용 Tool calling.
 - JUnit 5, MockK, Testcontainers, k6: 정합성은 실제 MySQL·Redis·Kafka로 증명한다.
@@ -71,7 +71,7 @@ flowchart LR
 - [x] 2. Redis 원자적 한도 차감으로 초과 개설 0건
 - [x] 3. Redis와 MySQL이 어긋날 때: DB 실패 시 한도 복구, 정합성 검사
 - [x] 4. Kafka(KRaft 단일 노드)를 docker-compose에 추가하고 Spring Kafka 연결
-- [ ] 5. Outbox: 송금·가입과 같은 트랜잭션에 이벤트 기록  ← 지금
-- [ ] 6. Outbox 릴레이로 Kafka 발행, 앱이 죽어도 유실 0건 테스트
+- [x] 5. Outbox(Modulith 이벤트 발행 기록): 송금·가입과 같은 트랜잭션에 이벤트를 기록하고 @Externalized로 Kafka에 발행
+- [ ] 6. 못 보낸 이벤트 다시 보내기: Kafka가 꺼지거나 앱이 죽어도 유실 0건 테스트  ← 지금
 - [ ] 7. notification 멱등 컨슈머: 같은 이벤트를 두 번 받아도 한 번만 처리
 - [ ] 8. k6 특판 오픈 부하 측정, ADR 005(한도 차감)·006(Outbox)
