@@ -59,3 +59,9 @@
 - 소요 시간:
 - AI가 놓친 버그: 테스트 파일을 스크립트로 고칠 때 주석 들여쓰기가 달라 `@Import`가 빠졌다. 고친 뒤 파일을 다시 열어 보고 찾았다.
 - 확인: Redis가 꺼진 상태에서도 Redis를 쓰지 않는 테스트가 모두 통과했다(처음 쓸 때 연결).
+
+## M3-3 Redis와 MySQL이 어긋날 때: 자리 돌려주기, 정합성 검사 (2026-11-22)
+- AI 사용: Claude Code가 `ProductQuota.release`, `ProductService.subscribe`의 트랜잭션 범위 변경, `QuotaAudit`, 테스트(`QuotaRecoveryTests`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그: 저장 실패를 흉내 낼 때 Mockito의 `doCallRealMethod`를 썼는데, 리포지토리가 인터페이스라 "진짜 메서드"가 없어 실패했다. `reset`으로 흉내를 지우는 방식으로 바꿨다.
+- 확인: 자리 돌려주는 줄을 잠깐 지우고 돌리면 `QuotaRecoveryTests`가 "마감"으로 실패하는 것을 보고, 테스트가 그 줄을 실제로 지켜 준다는 것을 확인했다.

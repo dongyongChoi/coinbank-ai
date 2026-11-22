@@ -23,6 +23,7 @@ import kotlin.test.assertEquals
 class ConcurrentSubscriptionTests(
     @Autowired private val productService: ProductService,
     @Autowired private val accountService: AccountService,
+    @Autowired private val quotaAudit: QuotaAudit,
     @Autowired private val jdbcTemplate: JdbcTemplate,
 ) {
 
@@ -49,6 +50,12 @@ class ConcurrentSubscriptionTests(
         }
 
         assertEquals(List(10) { 10 }, results, "상품마다 개설된 가입 수")
+        val productIds = products.map { it.productId }
+        assertEquals(
+            emptyList(),
+            quotaAudit.check().mismatches.filter { it.productId in productIds },
+            "Redis 남은 자리와 가입 기록이 어긋난 상품",
+        )
     }
 
     /**

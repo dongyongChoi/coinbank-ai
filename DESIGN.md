@@ -29,7 +29,7 @@ coinbank-ai/
 └── notification-service/                    M5 분리된 알림 서비스
 ```
 
-모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`, `LedgerAudit`, `AccountLock`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
+모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`, `LedgerAudit`, `AccountLock`, `ProductService`, `QuotaAudit`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
 
 ```mermaid
 flowchart LR
@@ -69,8 +69,8 @@ flowchart LR
 ## 현재 마일스톤: M3 특판 적금 + Kafka Outbox (브랜치 `m3-product-outbox`)
 - [x] 1. 특판 적금 가입 API(MySQL만)와 동시 가입 테스트로 초과 개설 재현
 - [x] 2. Redis 원자적 한도 차감으로 초과 개설 0건
-- [ ] 3. Redis와 MySQL이 어긋날 때: DB 실패 시 한도 복구, 정합성 검사  ← 지금
-- [ ] 4. Kafka(KRaft 단일 노드)를 docker-compose에 추가하고 Spring Kafka 연결
+- [x] 3. Redis와 MySQL이 어긋날 때: DB 실패 시 한도 복구, 정합성 검사
+- [ ] 4. Kafka(KRaft 단일 노드)를 docker-compose에 추가하고 Spring Kafka 연결  ← 지금
 - [ ] 5. Outbox: 송금·가입과 같은 트랜잭션에 이벤트 기록
 - [ ] 6. Outbox 릴레이로 Kafka 발행, 앱이 죽어도 유실 0건 테스트
 - [ ] 7. notification 멱등 컨슈머: 같은 이벤트를 두 번 받아도 한 번만 처리

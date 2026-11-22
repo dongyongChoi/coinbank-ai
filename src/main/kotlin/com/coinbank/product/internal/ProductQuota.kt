@@ -27,6 +27,18 @@ class ProductQuota(
             else -> throw IllegalStateException("Redis에 남은 자리 정보가 없습니다. 상품: $productId")
         }
 
+    /**
+     * 가져간 자리를 하나 돌려준다. 자리를 가져간 뒤 가입 기록을 남기지 못했을 때 부른다.
+     * 숫자가 없으면 아무것도 하지 않는다. 없는 키에 1을 더하면 "남은 자리 1"이 새로 생겨 버린다.
+     */
+    fun release(productId: Long) {
+        redis.execute(RELEASE, listOf(key(productId)))
+    }
+
+    /** Redis에 적힌 남은 자리. 숫자가 없으면 null. */
+    fun remaining(productId: Long): Long? =
+        redis.opsForValue().get(key(productId))?.toLong()
+
     private fun key(productId: Long) = "product:$productId:remaining"
 
     companion object {
@@ -44,6 +56,16 @@ class ProductQuota(
             if not remaining then return -1 end
             if tonumber(remaining) <= 0 then return 0 end
             redis.call('DECR', KEYS[1])
+            return 1
+            """.trimIndent(),
+            Long::class.java,
+        )
+
+        /** 숫자가 있을 때만 1을 더한다. 확인과 더하기 사이에 숫자가 지워지는 일이 없게 이것도 한 번에 한다. */
+        private val RELEASE = RedisScript.of<Long>(
+            """
+            if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
+            redis.call('INCR', KEYS[1])
             return 1
             """.trimIndent(),
             Long::class.java,
