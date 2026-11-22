@@ -17,6 +17,9 @@ spring:
       repositories:
         # Redis는 락과 숫자 세기에만 쓴다. Redis용 리포지토리 탐색을 끈다.
         enabled: false
+  kafka:
+    # docker-compose의 Kafka. 메시지를 처음 보낼 때 연결하므로, Kafka가 없어도 앱은 뜬다.
+    bootstrap-servers: localhost:9092
   jpa:
     open-in-view: false
     hibernate:

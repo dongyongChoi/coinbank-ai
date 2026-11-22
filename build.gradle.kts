@@ -32,12 +32,15 @@ dependencies {
     implementation("tools.jackson.module:jackson-module-kotlin")
     // Redis 분산 락. 스타터가 Spring Data Redis 설정(spring.data.redis.*)으로 RedissonClient를 만들어 준다.
     implementation("org.redisson:redisson-spring-boot-starter:4.8.0")
+    // Kafka로 이벤트를 보내고 받는다 (M3). 접속 정보는 spring.kafka.*에 있다.
+    implementation("org.springframework.boot:spring-boot-starter-kafka")
     runtimeOnly("com.mysql:mysql-connector-j")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.springframework.modulith:spring-modulith-starter-test")
     testImplementation("org.testcontainers:testcontainers-mysql")
+    testImplementation("org.testcontainers:testcontainers-kafka")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

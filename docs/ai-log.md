@@ -65,3 +65,9 @@
 - 소요 시간:
 - AI가 놓친 버그: 저장 실패를 흉내 낼 때 Mockito의 `doCallRealMethod`를 썼는데, 리포지토리가 인터페이스라 "진짜 메서드"가 없어 실패했다. `reset`으로 흉내를 지우는 방식으로 바꿨다.
 - 확인: 자리 돌려주는 줄을 잠깐 지우고 돌리면 `QuotaRecoveryTests`가 "마감"으로 실패하는 것을 보고, 테스트가 그 줄을 실제로 지켜 준다는 것을 확인했다.
+
+## M3-4 Kafka(KRaft 단일 노드)와 Spring Kafka 연결 (2026-11-22)
+- AI 사용: Claude Code가 docker-compose의 `kafka` 서비스, `spring-boot-starter-kafka` 의존성, `spring.kafka.bootstrap-servers`, 테스트 설정(`KafkaTestcontainersConfiguration`)과 연결 테스트(`KafkaConnectionTests`)를 작성했다. 이미지 태그가 실제로 있는지 먼저 확인하고, compose의 Kafka에서도 메시지 한 건을 보내고 읽어 봤다.
+- 소요 시간:
+- AI가 놓친 버그:
+- 확인: Kafka 컨테이너 없이 뜨는 다른 테스트 로그에 Kafka 연결 시도가 0번이었다(메시지를 처음 보낼 때 연결).
