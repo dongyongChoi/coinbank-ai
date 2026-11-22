@@ -22,6 +22,15 @@ spring:
     # 메시지 내용(value)의 직렬화는 적지 않는다. spring-modulith-events-kafka가 바이트로 바꾸고,
     # 그 위에서 이벤트를 JSON으로 만들어 보낸다 (spring.modulith.events.kafka.enable-json 기본값 true).
     bootstrap-servers: localhost:9092
+    producer:
+      properties:
+        # Kafka가 대답하지 않을 때 기다리는 시간. 기본값(1~2분)이면 못 보낸 이벤트가 그동안 "보내는 중"으로 묶여 있다.
+        # 처음 연결해서 토픽 정보를 받아 올 때까지 기다리는 시간
+        max.block.ms: 5000
+        # 요청 하나에 대답을 기다리는 시간
+        request.timeout.ms: 5000
+        # 보내기 시작부터 성공·실패가 정해질 때까지의 전체 시간. request.timeout.ms보다 길어야 한다.
+        delivery.timeout.ms: 10000
   jpa:
     open-in-view: false
     hibernate:
@@ -56,3 +65,8 @@ coinbank:
   lock-strategy: pessimistic
   # 잔액을 어디서 읽는가 (ADR 001): ledger-and-column(C안, 원장 + 잔액 컬럼) | ledger-only(B안, 원장 합산만)
   balance-model: ledger-and-column
+  events:
+    # 못 보낸 이벤트를 다시 보내는 주기 (EventResubmission)
+    resubmit-interval: 10s
+    # 이만큼 지나도 완료 표시가 없는 이벤트만 다시 보낸다. delivery.timeout.ms(10초)보다 길게 둔다.
+    resubmit-older-than: 30s

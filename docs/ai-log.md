@@ -79,3 +79,10 @@
   - Modulith가 Kafka 메시지 내용을 바이트로 주고받게 설정을 바꾸는 것을 몰랐다. 테스트가 `ClassCastException`으로 실패해서 Modulith jar의 `kafka-json.properties`를 열어 보고 알았다. M3-4의 연결 테스트도 바이트로 고쳤다.
   - Kafka가 없는 테스트에서도 이벤트를 Kafka로 보내려다 기다리느라 전체 테스트가 1분대에서 4분 33초로 늘었다. 테스트 결과는 초록이라 시간을 보지 않았으면 놓쳤다. 이런 테스트에서는 외부 발행을 끄고 `@KafkaTest`에서만 켰다.
 - 참고: 한 번은 컴퓨터가 잠들어 전체 테스트가 1시간 38분으로 찍혔다. `caffeinate`로 다시 재서 1분 1초.
+
+## M3-6 못 보낸 이벤트 다시 보내기 (2026-11-22)
+- AI 사용: Claude Code가 Modulith 2.1의 다시 보내기 API(`IncompleteEventPublications`)를 jar에서 확인하고, `EventResubmission`(주기적 다시 보내기), Kafka 프로듀서 대기 시간 설정, 테스트(`EventRecoveryTests`, Kafka 컨테이너 pause)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그:
+- 확인: 다시 보내기 주기를 1시간으로 바꿔 사실상 멈추면 `EventRecoveryTests`가 "메시지를 찾지 못했다"로 실패했다. 이벤트를 살린 것이 Kafka 클라이언트의 자체 재시도가 아니라 `EventResubmission`이라는 것을 확인했다.
+- 남은 것: "보내기 전에 앱이 죽은" 경우는 이 테스트로 확인하지 않았다. M3-8의 kill -9 실험으로 옮겼다.
