@@ -22,6 +22,10 @@ spring:
     # 메시지 내용(value)의 직렬화는 적지 않는다. spring-modulith-events-kafka가 바이트로 바꾸고,
     # 그 위에서 이벤트를 JSON으로 만들어 보낸다 (spring.modulith.events.kafka.enable-json 기본값 true).
     bootstrap-servers: localhost:9092
+    consumer:
+      # 처음 붙는 컨슈머 그룹은 토픽의 맨 처음부터 읽는다. 기본값(latest)이면 그룹이 생기기 전에 온 이벤트를 건너뛴다.
+      # 처음부터 읽어도 같은 이벤트는 한 번만 처리하므로(processed_event) 알림이 두 번 생기지 않는다.
+      auto-offset-reset: earliest
     producer:
       properties:
         # Kafka가 대답하지 않을 때 기다리는 시간. 기본값(1~2분)이면 못 보낸 이벤트가 그동안 "보내는 중"으로 묶여 있다.

@@ -86,3 +86,10 @@
 - AI가 놓친 버그:
 - 확인: 다시 보내기 주기를 1시간으로 바꿔 사실상 멈추면 `EventRecoveryTests`가 "메시지를 찾지 못했다"로 실패했다. 이벤트를 살린 것이 Kafka 클라이언트의 자체 재시도가 아니라 `EventResubmission`이라는 것을 확인했다.
 - 남은 것: "보내기 전에 앱이 죽은" 경우는 이 테스트로 확인하지 않았다. M3-8의 kill -9 실험으로 옮겼다.
+
+## M3-7 notification 멱등 컨슈머 (2026-11-22)
+- AI 사용: Claude Code가 notification 모듈(`NotificationListener`, `NotificationRecorder`, `Notification`, `ProcessedEvent`, 이벤트 모양 `EventMessages.kt`), 컨슈머 설정, 테스트(`NotificationTests`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그:
+- 확인: 처리 표시 확인을 잠깐 건너뛰게 하면 `NotificationTests`가 "알림 수 1이어야 하는데 2"로 실패했다.
+- 남은 것: 알림 저장이 계속 실패하면 Spring Kafka 기본 오류 처리기가 10번 시도한 뒤 그 이벤트를 건너뛴다. 받는 쪽에서 이벤트가 사라질 수 있다. M3-8에서 다시 시도 + DLT로 막는다.
