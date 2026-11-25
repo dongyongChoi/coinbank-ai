@@ -13,9 +13,9 @@ coinbank-ai/
 ├── docker-compose.yml, .env.example         M1 MySQL·Redis → M2 otel-lgtm·k6 → M3 Kafka
 ├── .github/workflows/ci.yml                 M1
 ├── http/coinbank.http                       M1 API 시연
-├── docs/adr/                                M1부터 계속 (001 원장 모델, 002 모듈 경계, 003 락 전략, 004 멱등 키)
+├── docs/adr/                                M1부터 계속 (001 원장 모델, 002 모듈 경계, 003 락 전략, 004 멱등 키, 005 특판 한도 차감, 006 이벤트 발행 Outbox)
 ├── docs/ai-log.md                           M2부터 AI 활용 기록
-├── k6/                                      M2 transfer.js 부하 시나리오, bench-locks.sh 락 3안 측정
+├── k6/                                      M2 transfer.js 부하 시나리오, bench-locks.sh 락 3안 측정 → M3 subscribe.js·bench-subscribe.sh 특판 오픈, kill-test.sh 강제 종료
 ├── src/main/kotlin/com/coinbank/
 │   ├── CoinbankApplication.kt               M1
 │   ├── ApiExceptionHandler.kt               M1 도메인 예외 → HTTP 응답
@@ -75,4 +75,4 @@ flowchart LR
 - [x] 6. 못 보낸 이벤트 다시 보내기: Kafka가 꺼져도 유실 0건 테스트
 - [x] 7. notification 멱등 컨슈머: 같은 이벤트를 두 번 받아도 한 번만 처리
 - [x] 8. 컨슈머 오류 처리: 점점 길게 쉬며 다시 시도하고, 그래도 안 되면 DLT로 옮기기
-- [ ] 9. k6 특판 오픈 부하 측정과 앱 강제 종료(kill -9) 실험, ADR 005(한도 차감)·006(Outbox)  ← 지금
+- [x] 9. k6 특판 오픈 부하 측정과 앱 강제 종료(kill -9) 실험, ADR 005(한도 차감)·006(Outbox)
