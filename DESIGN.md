@@ -13,23 +13,24 @@ coinbank-ai/
 ├── docker-compose.yml, .env.example         M1 MySQL·Redis → M2 otel-lgtm·k6 → M3 Kafka
 ├── .github/workflows/ci.yml                 M1
 ├── http/coinbank.http                       M1 API 시연
-├── docs/adr/                                M1부터 계속 (001 원장 모델, 002 모듈 경계, 003 락 전략, 004 멱등 키)
+├── docs/adr/                                M1부터 계속 (001 원장 모델, 002 모듈 경계, 003 락 전략, 004 멱등 키, 005 특판 한도 차감, 006 이벤트 발행 Outbox)
 ├── docs/ai-log.md                           M2부터 AI 활용 기록
-├── k6/                                      M2 transfer.js 부하 시나리오, bench-locks.sh 락 3안 측정
+├── k6/                                      M2 transfer.js 부하 시나리오, bench-locks.sh 락 3안 측정 → M3 subscribe.js·bench-subscribe.sh 특판 오픈, kill-test.sh 강제 종료
 ├── src/main/kotlin/com/coinbank/
 │   ├── CoinbankApplication.kt               M1
 │   ├── ApiExceptionHandler.kt               M1 도메인 예외 → HTTP 응답
+│   ├── EventResubmission.kt                 M3 못 보낸 이벤트 주기적 다시 보내기
 │   ├── account/                             M1 계좌 → M2 원장
-│   ├── transfer/                            M1 송금 → M2 락·멱등 키
-│   ├── product/                             M1 뼈대 → M3 특판 적금
-│   ├── notification/                        M1 뼈대 → M3 알림 컨슈머 → M5 삭제
+│   ├── transfer/                            M1 송금 → M2 락·멱등 키 → M3 송금 완료 이벤트
+│   ├── product/                             M1 뼈대 → M3 특판 적금(Redis 한도 차감, 가입 이벤트)
+│   ├── notification/                        M1 뼈대 → M3 멱등 알림 컨슈머·DLT → M5 삭제
 │   ├── home/                                M1 뼈대 → M4 홈 집계
 │   └── advisor/                             M6 AI 소비 상담
-├── src/test/kotlin/com/coinbank/            M1부터 (@IntegrationTest, Testcontainers, ModularityTests) → M2 락 전략별 동시 송금 테스트
+├── src/test/kotlin/com/coinbank/            M1부터 (@IntegrationTest, Testcontainers, ModularityTests) → M2 락 전략별 동시 송금 테스트 → M3 동시 가입, @KafkaTest 이벤트 발행·복구·멱등·DLT
 └── notification-service/                    M5 분리된 알림 서비스
 ```
 
-모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`, `LedgerAudit`, `AccountLock`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
+모듈 안의 규칙: 패키지 바로 아래는 공개 API(`AccountService`, `AccountInfo`, `LedgerAudit`, `AccountLock`, `ProductService`, `QuotaAudit`, 이벤트 `TransferCompleted`·`SubscriptionCreated`), `internal/`은 엔티티·리포지토리·컨트롤러. 허용 의존은 각 모듈의 `ModuleMetadata.kt`에 선언한다.
 
 ```mermaid
 flowchart LR
@@ -39,6 +40,7 @@ flowchart LR
   C --> AI["advisor (M6)"]
   T --> A["account + 원장 (M1·M2)"]
   A --> DB[("MySQL (M1)")]
+  P --> A
   P --> R[("Redis (M3)")]
   T -- Outbox --> K{{"Kafka (M3)"}}
   P -- Outbox --> K
@@ -53,7 +55,7 @@ flowchart LR
 - Spring Modulith: 모듈 경계를 테스트로 강제하고 M5 분리의 길을 연다.
 - MySQL 8.4 + Spring Data JPA: 익숙한 도구로 락 동작을 깊게 판다.
 - Redis 7 + Redisson (M2~M3): 분산 락, 원자적 한도 차감.
-- Kafka KRaft 단일 노드 (M3): Outbox, 멱등 컨슈머.
+- Kafka KRaft 단일 노드 (M3): Outbox(Spring Modulith 이벤트 발행 기록 + Kafka 외부 발행), 멱등 컨슈머, 다시 시도 + DLT.
 - Coroutines vs Virtual Threads (M4): 같은 API에서 맞비교.
 - Spring AI 2.0.x (M6): 읽기 전용 Tool calling.
 - JUnit 5, MockK, Testcontainers, k6: 정합성은 실제 MySQL·Redis·Kafka로 증명한다.
@@ -61,18 +63,18 @@ flowchart LR
 ## 마일스톤
 - [x] M1 Kotlin 수직 슬라이스 (1주차): 송금 1건이 API → DB → 테스트 → CI를 통과한다
 - [x] M2 동시성·정합성 (2주차): 동시 송금 1만 건에서 불일치·중복 0건, 락 3안 비교표
-- [ ] M3 특판 적금 + Kafka Outbox (3주차): 초과 개설 0건, 이벤트 유실 0건
+- [x] M3 특판 적금 + Kafka Outbox (3주차): 초과 개설 0건, 이벤트 유실 0건
 - [ ] M4 비동기 홈 집계 (4주차): 순차·Virtual Thread·Coroutine p95 비교표
 - [ ] M5 알림 모듈 점진 이관 (5주차): 알림을 별도 서비스로 분리하고 모놀리스 코드 삭제
 - [ ] M6 금융 AI + 마무리 (6주차, Could): 읽기 전용 AI 상담, README·회고
 
-## 현재 마일스톤: M2 동시성·정합성 (완료, 2026-11-18)
-- [x] 1. 동시 송금 테스트로 갱신 유실 재현
-- [x] 2. 복식 부기 원장과 "원장 합산 = 잔액" 검사
-- [x] 3. 비관 락 + 계좌 번호 정렬로 데드락 방지
-- [x] 4. 낙관 락(@Version), 재시도, 락 전략 설정
-- [x] 5. Redis 분산 락(Redisson)
-- [x] 6. Idempotency-Key 헤더 + 유니크 제약
-- [x] 7. otel-lgtm 관측과 k6 송금 시나리오
-- [x] 8. 락 3안 1만 건 측정, 비교표, ADR(003 락 전략·004 멱등 키)
-- [x] 9. 원장 합산만(ADR 001의 B안) 구현과 측정, ADR 001 확정
+## 현재 마일스톤: M3 특판 적금 + Kafka Outbox (브랜치 `m3-product-outbox`)
+- [x] 1. 특판 적금 가입 API(MySQL만)와 동시 가입 테스트로 초과 개설 재현
+- [x] 2. Redis 원자적 한도 차감으로 초과 개설 0건
+- [x] 3. Redis와 MySQL이 어긋날 때: DB 실패 시 한도 복구, 정합성 검사
+- [x] 4. Kafka(KRaft 단일 노드)를 docker-compose에 추가하고 Spring Kafka 연결
+- [x] 5. Outbox(Modulith 이벤트 발행 기록): 송금·가입과 같은 트랜잭션에 이벤트를 기록하고 @Externalized로 Kafka에 발행
+- [x] 6. 못 보낸 이벤트 다시 보내기: Kafka가 꺼져도 유실 0건 테스트
+- [x] 7. notification 멱등 컨슈머: 같은 이벤트를 두 번 받아도 한 번만 처리
+- [x] 8. 컨슈머 오류 처리: 점점 길게 쉬며 다시 시도하고, 그래도 안 되면 DLT로 옮기기
+- [x] 9. k6 특판 오픈 부하 측정과 앱 강제 종료(kill -9) 실험, ADR 005(한도 차감)·006(Outbox)

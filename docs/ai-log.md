@@ -48,3 +48,66 @@
 - 소요 시간:
 - AI가 놓친 버그:
 - 참고: B안, 계좌 100개의 첫 측정에서 테스트가 한 번 11초 동안 멈췄다. 원인을 찾지 못해 다시 쟀다.
+
+## M3-1 특판 적금 가입 API와 초과 개설 재현 (2026-11-21)
+- AI 사용: Claude Code가 product 모듈(`ProductService`, `SavingsProduct`, `Subscription`, `ProductController`)과 테스트(`ConcurrentSubscriptionTests`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그: 처음 테스트는 상품 1개에 100명이 몰리는 경우만 봤는데, 10번 중 4번만 초과 개설이 났다. 같은 몰림을 상품 10개에 일으키도록 바꿔 매번 잡히게 했다.
+
+## M3-2 Redis 원자적 한도 차감 (2026-11-21)
+- AI 사용: Claude Code가 `ProductQuota`(Lua 스크립트로 "확인 후 빼기")를 작성해 `ProductService`에 연결하고, 꺼 두었던 동시 가입 테스트를 켜서 3번 돌렸다.
+- 소요 시간:
+- AI가 놓친 버그: 테스트 파일을 스크립트로 고칠 때 주석 들여쓰기가 달라 `@Import`가 빠졌다. 고친 뒤 파일을 다시 열어 보고 찾았다.
+- 확인: Redis가 꺼진 상태에서도 Redis를 쓰지 않는 테스트가 모두 통과했다(처음 쓸 때 연결).
+
+## M3-3 Redis와 MySQL이 어긋날 때: 자리 돌려주기, 정합성 검사 (2026-11-22)
+- AI 사용: Claude Code가 `ProductQuota.release`, `ProductService.subscribe`의 트랜잭션 범위 변경, `QuotaAudit`, 테스트(`QuotaRecoveryTests`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그: 저장 실패를 흉내 낼 때 Mockito의 `doCallRealMethod`를 썼는데, 리포지토리가 인터페이스라 "진짜 메서드"가 없어 실패했다. `reset`으로 흉내를 지우는 방식으로 바꿨다.
+- 확인: 자리 돌려주는 줄을 잠깐 지우고 돌리면 `QuotaRecoveryTests`가 "마감"으로 실패하는 것을 보고, 테스트가 그 줄을 실제로 지켜 준다는 것을 확인했다.
+
+## M3-4 Kafka(KRaft 단일 노드)와 Spring Kafka 연결 (2026-11-22)
+- AI 사용: Claude Code가 docker-compose의 `kafka` 서비스, `spring-boot-starter-kafka` 의존성, `spring.kafka.bootstrap-servers`, 테스트 설정(`KafkaTestcontainersConfiguration`)과 연결 테스트(`KafkaConnectionTests`)를 작성했다. 이미지 태그가 실제로 있는지 먼저 확인하고, compose의 Kafka에서도 메시지 한 건을 보내고 읽어 봤다.
+- 소요 시간:
+- AI가 놓친 버그:
+- 확인: Kafka 컨테이너 없이 뜨는 다른 테스트 로그에 Kafka 연결 시도가 0번이었다(메시지를 처음 보낼 때 연결).
+
+## M3-5 Outbox: Modulith 이벤트 발행 기록과 Kafka 외부 발행 (2026-11-22)
+- AI 사용: 직접 만들기(A)와 Modulith(B)를 Claude Code가 비교해 A를 추천했고, B를 골랐다. Claude Code가 이벤트(`TransferCompleted`, `SubscriptionCreated`), 발행 코드, 의존성, 테스트(`EventPublicationTests`, `@KafkaTest`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그:
+  - Modulith가 Kafka 메시지 내용을 바이트로 주고받게 설정을 바꾸는 것을 몰랐다. 테스트가 `ClassCastException`으로 실패해서 Modulith jar의 `kafka-json.properties`를 열어 보고 알았다. M3-4의 연결 테스트도 바이트로 고쳤다.
+  - Kafka가 없는 테스트에서도 이벤트를 Kafka로 보내려다 기다리느라 전체 테스트가 1분대에서 4분 33초로 늘었다. 테스트 결과는 초록이라 시간을 보지 않았으면 놓쳤다. 이런 테스트에서는 외부 발행을 끄고 `@KafkaTest`에서만 켰다.
+- 참고: 한 번은 컴퓨터가 잠들어 전체 테스트가 1시간 38분으로 찍혔다. `caffeinate`로 다시 재서 1분 1초.
+
+## M3-6 못 보낸 이벤트 다시 보내기 (2026-11-22)
+- AI 사용: Claude Code가 Modulith 2.1의 다시 보내기 API(`IncompleteEventPublications`)를 jar에서 확인하고, `EventResubmission`(주기적 다시 보내기), Kafka 프로듀서 대기 시간 설정, 테스트(`EventRecoveryTests`, Kafka 컨테이너 pause)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그:
+- 확인: 다시 보내기 주기를 1시간으로 바꿔 사실상 멈추면 `EventRecoveryTests`가 "메시지를 찾지 못했다"로 실패했다. 이벤트를 살린 것이 Kafka 클라이언트의 자체 재시도가 아니라 `EventResubmission`이라는 것을 확인했다.
+- 남은 것: "보내기 전에 앱이 죽은" 경우는 이 테스트로 확인하지 않았다. M3-8의 kill -9 실험으로 옮겼다.
+
+## M3-7 notification 멱등 컨슈머 (2026-11-22)
+- AI 사용: Claude Code가 notification 모듈(`NotificationListener`, `NotificationRecorder`, `Notification`, `ProcessedEvent`, 이벤트 모양 `EventMessages.kt`), 컨슈머 설정, 테스트(`NotificationTests`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그:
+- 확인: 처리 표시 확인을 잠깐 건너뛰게 하면 `NotificationTests`가 "알림 수 1이어야 하는데 2"로 실패했다.
+- 남은 것: 알림 저장이 계속 실패하면 Spring Kafka 기본 오류 처리기가 10번 시도한 뒤 그 이벤트를 건너뛴다. 받는 쪽에서 이벤트가 사라질 수 있다. M3-8에서 다시 시도 + DLT로 막는다.
+
+## M3-8 컨슈머 오류 처리: 다시 시도 + DLT (2026-11-23)
+- AI 사용: 8단계가 커져서 Claude Code가 8·9단계로 나누자고 제안했고, 나눴다. Claude Code가 `NotificationKafkaConfiguration`(점점 길게 쉬는 다시 시도 + DLT), 설정, 테스트(`NotificationErrorTests`)를 작성하고 실행했다.
+- 소요 시간:
+- AI가 놓친 버그: 처음 테스트는 "처리 표시도 롤백"이라고 적어 놓고 알림 표를 셌다. 망가진 JSON 테스트 이름은 "다시 시도하지 않고"였는데 그 부분은 확인하지 않았다. 둘 다 고쳤다.
+- 확인: 오류 처리 빈을 빼면 두 테스트 모두 "DLT에서 찾지 못했다"로 실패했다.
+- 남은 것: DLT로 옮긴 이벤트를 다시 넣는 도구는 만들지 않았다. 지금은 사람이 kafka-console 도구로 옮겨야 한다.
+
+## M3-9 특판 오픈 부하 측정, kill -9 실험, ADR 005·006 (2026-11-24)
+- AI 사용: Claude Code가 `k6/subscribe.js`, `k6/bench-subscribe.sh`, `k6/kill-test.sh`를 작성해 각각 3번 돌리고, 부하 중 이벤트 밀림도 쟀다. ADR 005·006은 결정 이유까지 Claude Code가 썼다(005의 결정 이유는 "수천 명이 몰리는 것을 생각해서"라는 내 판단을 바탕으로). 처음 쓴 005 결정 이유에 "어긋나도 자리가 남는 쪽"이라고 적었는데, 응답만 끊긴 경우는 오히려 1건 초과 개설이 생기는 쪽이라 고쳤다.
+- 소요 시간:
+- AI가 놓친 버그:
+  - kill 실험 스크립트의 SQL 끝에 괄호가 하나 더 있었다. `2>/dev/null`로 오류를 버려서 빈 값으로만 보였고, `bash -x`로 따라가서 찾았다. 오류는 버리지 않고 `MYSQL_PWD`로 경고만 없앴다.
+  - 앱이 죽은 동안 k6가 연결 거부로 남은 송금 횟수를 몇 초 만에 다 써 버렸다. `transfer.js`에 연결 실패 시 1초 쉬기를 넣었다.
+- 발견:
+  - 특판 오픈 2·3회차에 각 2건이 앱에 닿기 전에 30초 연결 시간 초과로 실패했다(원인 추정: 연결 대기 줄 넘침).
+  - 부하 중 이벤트 발송이 크게 밀린다(최대 4,453건, 송금이 끝나고 11초 뒤 따라잡음).
+  - `event_publication.serialized_event`가 `varchar(255)`다. 255자를 넘는 이벤트는 기록에 실패할 것으로 예상한다. 스키마 관리(Flyway 등)가 필요해 나중으로 미뤘다.

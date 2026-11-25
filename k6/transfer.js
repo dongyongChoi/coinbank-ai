@@ -11,7 +11,7 @@
 //   REPLAY_RATE 같은 Idempotency-Key로 한 번 더 보내는 비율 (기본 0.05)
 import http from 'k6/http';
 import exec from 'k6/execution';
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const ACCOUNTS = Number(__ENV.ACCOUNTS || 100);
@@ -78,6 +78,10 @@ export default function (data) {
 
   const res = http.post(`${BASE_URL}/transfers`, body, params('transfer'));
   check(res, { '송금 201': (r) => r.status === 201 });
+
+  // 앱에 연결조차 못 했으면(kill-test.sh에서 앱을 죽인 동안) 1초 쉬고 다음 송금으로 간다.
+  // 쉬지 않으면 연결 거부가 바로 돌아와서 남은 송금 횟수를 몇 초 만에 다 써 버린다.
+  if (res.status === 0) sleep(1);
 
   // 일부 요청은 응답을 못 받은 클라이언트처럼 같은 키로 한 번 더 보낸다.
   if (res.status === 201 && Math.random() < REPLAY_RATE) {

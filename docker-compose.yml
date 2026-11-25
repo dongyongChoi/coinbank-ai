@@ -27,6 +27,35 @@ services:
       timeout: 3s
       retries: 20
 
+  # 이벤트를 받아서 전해 주는 Kafka. 브로커 한 대가 컨트롤러(클러스터 관리) 일도 같이 하는 KRaft 단일 노드다.
+  # 앱은 호스트에서 localhost:9092로 붙는다. 데이터는 컨테이너 안에만 있어 docker compose down 하면 지워진다.
+  # 이벤트의 원본은 MySQL의 Outbox 테이블(M3-5)이라, Kafka가 비워져도 다시 보낼 수 있다.
+  kafka:
+    image: apache/kafka:4.3.0
+    ports:
+      - "127.0.0.1:9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      # 이 노드 하나가 메시지를 받는 브로커와 클러스터를 관리하는 컨트롤러를 모두 맡는다 (ZooKeeper 없음).
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      # 9092는 앱이 메시지를 주고받는 문, 9093은 컨트롤러끼리 쓰는 문이다.
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      # 노드가 한 대라 복제본도 하나다. 기본값 3이면 내부 토픽을 만들지 못한다.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      # 컨슈머가 붙자마자 바로 메시지를 받게 한다 (기본은 3초 기다림).
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
   # 관측 한 상자: OpenTelemetry Collector + Prometheus(지표) + Tempo(트레이스) + Loki(로그) + Grafana(화면).
   # 앱이 4318 포트로 지표와 트레이스를 보내고, http://localhost:3000 에서 본다.
   otel-lgtm:

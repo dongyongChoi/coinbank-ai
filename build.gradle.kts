@@ -28,16 +28,23 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
     implementation("org.springframework.modulith:spring-modulith-starter-core")
+    // Outbox: 이벤트를 업무 데이터와 같은 트랜잭션에서 event_publication 테이블에 적는다(이벤트 발행 기록).
+    implementation("org.springframework.modulith:spring-modulith-starter-jpa")
+    // @Externalized가 붙은 이벤트를 커밋 뒤에 Kafka로 보낸다.
+    implementation("org.springframework.modulith:spring-modulith-events-kafka")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
     // Redis 분산 락. 스타터가 Spring Data Redis 설정(spring.data.redis.*)으로 RedissonClient를 만들어 준다.
     implementation("org.redisson:redisson-spring-boot-starter:4.8.0")
+    // Kafka로 이벤트를 보내고 받는다 (M3). 접속 정보는 spring.kafka.*에 있다.
+    implementation("org.springframework.boot:spring-boot-starter-kafka")
     runtimeOnly("com.mysql:mysql-connector-j")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.springframework.modulith:spring-modulith-starter-test")
     testImplementation("org.testcontainers:testcontainers-mysql")
+    testImplementation("org.testcontainers:testcontainers-kafka")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

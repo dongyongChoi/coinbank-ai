@@ -5,6 +5,7 @@ import com.coinbank.account.AccountService
 import com.coinbank.transfer.internal.Transfer
 import com.coinbank.transfer.internal.TransferRepository
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.stereotype.Service
@@ -17,6 +18,7 @@ class TransferService(
     private val accountLock: AccountLock,
     private val transferRepository: TransferRepository,
     private val transactionTemplate: TransactionTemplate,
+    private val events: ApplicationEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -59,8 +61,9 @@ class TransferService(
     }
 
     /**
-     * 송금 기록과 돈 옮기기. 한 트랜잭션 안에서 실행되고, 하나라도 실패하면 전부 롤백된다.
+     * 송금 기록, 돈 옮기기, 이벤트 기록. 한 트랜잭션 안에서 실행되고, 하나라도 실패하면 전부 롤백된다.
      * 기록을 먼저 넣는다. 같은 키의 요청이 동시에 오면 유니크 제약에 걸려 돈을 옮기기 전에 멈춘다.
+     * 이벤트는 돈을 옮긴 뒤에 발행한다. 잔액 부족으로 실패하면 이벤트는 적히지 않는다.
      */
     private fun transferOnce(
         fromAccountNumber: String,
@@ -72,7 +75,10 @@ class TransferService(
 
         accountService.moveMoney(fromAccountNumber, toAccountNumber, amount, transfer.transactionId)
 
-        return transfer.toInfo()
+        val info = transfer.toInfo()
+        // Kafka로 바로 보내지 않는다. Modulith가 이 트랜잭션 안에서 event_publication에 적고, 커밋 뒤에 보낸다.
+        events.publishEvent(TransferCompleted(info.transferId, fromAccountNumber, toAccountNumber, amount, info.createdAt))
+        return info
     }
 
     /** 같은 키로 이미 끝난 송금을 찾는다. 키는 같은데 내용이 다르면 잘못된 요청이다. */
