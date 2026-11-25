@@ -19,13 +19,14 @@ coinbank-ai/
 ├── src/main/kotlin/com/coinbank/
 │   ├── CoinbankApplication.kt               M1
 │   ├── ApiExceptionHandler.kt               M1 도메인 예외 → HTTP 응답
+│   ├── EventResubmission.kt                 M3 못 보낸 이벤트 주기적 다시 보내기
 │   ├── account/                             M1 계좌 → M2 원장
-│   ├── transfer/                            M1 송금 → M2 락·멱등 키
-│   ├── product/                             M1 뼈대 → M3 특판 적금
-│   ├── notification/                        M1 뼈대 → M3 알림 컨슈머 → M5 삭제
+│   ├── transfer/                            M1 송금 → M2 락·멱등 키 → M3 송금 완료 이벤트
+│   ├── product/                             M1 뼈대 → M3 특판 적금(Redis 한도 차감, 가입 이벤트)
+│   ├── notification/                        M1 뼈대 → M3 멱등 알림 컨슈머·DLT → M5 삭제
 │   ├── home/                                M1 뼈대 → M4 홈 집계
 │   └── advisor/                             M6 AI 소비 상담
-├── src/test/kotlin/com/coinbank/            M1부터 (@IntegrationTest, Testcontainers, ModularityTests) → M2 락 전략별 동시 송금 테스트
+├── src/test/kotlin/com/coinbank/            M1부터 (@IntegrationTest, Testcontainers, ModularityTests) → M2 락 전략별 동시 송금 테스트 → M3 동시 가입, @KafkaTest 이벤트 발행·복구·멱등·DLT
 └── notification-service/                    M5 분리된 알림 서비스
 ```
 
@@ -39,6 +40,7 @@ flowchart LR
   C --> AI["advisor (M6)"]
   T --> A["account + 원장 (M1·M2)"]
   A --> DB[("MySQL (M1)")]
+  P --> A
   P --> R[("Redis (M3)")]
   T -- Outbox --> K{{"Kafka (M3)"}}
   P -- Outbox --> K
@@ -53,7 +55,7 @@ flowchart LR
 - Spring Modulith: 모듈 경계를 테스트로 강제하고 M5 분리의 길을 연다.
 - MySQL 8.4 + Spring Data JPA: 익숙한 도구로 락 동작을 깊게 판다.
 - Redis 7 + Redisson (M2~M3): 분산 락, 원자적 한도 차감.
-- Kafka KRaft 단일 노드 (M3): Outbox(Spring Modulith 이벤트 발행 기록 + Kafka 외부 발행), 멱등 컨슈머.
+- Kafka KRaft 단일 노드 (M3): Outbox(Spring Modulith 이벤트 발행 기록 + Kafka 외부 발행), 멱등 컨슈머, 다시 시도 + DLT.
 - Coroutines vs Virtual Threads (M4): 같은 API에서 맞비교.
 - Spring AI 2.0.x (M6): 읽기 전용 Tool calling.
 - JUnit 5, MockK, Testcontainers, k6: 정합성은 실제 MySQL·Redis·Kafka로 증명한다.
@@ -61,7 +63,7 @@ flowchart LR
 ## 마일스톤
 - [x] M1 Kotlin 수직 슬라이스 (1주차): 송금 1건이 API → DB → 테스트 → CI를 통과한다
 - [x] M2 동시성·정합성 (2주차): 동시 송금 1만 건에서 불일치·중복 0건, 락 3안 비교표
-- [ ] M3 특판 적금 + Kafka Outbox (3주차): 초과 개설 0건, 이벤트 유실 0건
+- [x] M3 특판 적금 + Kafka Outbox (3주차): 초과 개설 0건, 이벤트 유실 0건
 - [ ] M4 비동기 홈 집계 (4주차): 순차·Virtual Thread·Coroutine p95 비교표
 - [ ] M5 알림 모듈 점진 이관 (5주차): 알림을 별도 서비스로 분리하고 모놀리스 코드 삭제
 - [ ] M6 금융 AI + 마무리 (6주차, Could): 읽기 전용 AI 상담, README·회고
